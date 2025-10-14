@@ -1,0 +1,21 @@
+{
+    "entity": {
+        "sensor": {
+            "cpuload": {
+                "default": "mdi:cpu-64-bit"
+            },
+            "memory_usage": {
+                "default": "mdi:memory"
+            },
+            "uptime": {
+                "default": "mdi:timer-outline"
+            },
+            "rxspeed": {
+                "default": "mdi:speedometer"
+            },
+            "txspeed": {
+                "default": "mdi:speedometer"
+            }
+        }
+    }
+}

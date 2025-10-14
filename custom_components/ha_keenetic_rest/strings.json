@@ -1,0 +1,40 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "data": {
+                    "host": "[%key:common::config_flow::data::host%]",
+                    "username": "[%key:common::config_flow::data::username%]",
+                    "password": "[%key:common::config_flow::data::password%]",
+                    "port": "[%key:common::config_flow::data::port%]",
+                    "protocol": "[%key:common::config_flow::data::protocol%]",
+                    "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]"
+                }
+
+            }
+        },
+        "error": {
+            "invalid_url": "[%key:common::config_flow::error::invalid_url%]",
+            "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+            "invalid_credentials": "[%key:common::config_flow::error::invalid_credentials%]",
+            "unsupported_device": "[%key:common::config_flow::error::unsupported_device%]",
+            "unknown": "[%key:common::config_flow::error::unknown%]"
+        },
+        "abort": {
+            "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+        }
+    },
+    "entity": {
+        "sensor": {
+            "cpuload": {
+                "name": "CPU load"
+            },
+            "rxspeed": {
+                "name": "RX speed"
+            },
+            "txspeed": {
+                "name": "TX speed"
+            }
+        }
+    }
+}

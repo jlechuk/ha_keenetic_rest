@@ -1,0 +1,8 @@
+{
+    "domain": "ha_keenetic_rest",
+    "name": "Keenetic Rest API",
+    "integration_type": "device",
+    "config_flow": true,
+    "iot_class": "local_polling",
+    "version": "0.0.1"
+}

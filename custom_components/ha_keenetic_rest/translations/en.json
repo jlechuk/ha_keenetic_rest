@@ -1,0 +1,52 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "data": {
+                    "host": "Host",
+                    "username": "Username",
+                    "password": "Password",
+                    "port": "Port",
+                    "protocol": "Protocol",
+                    "verify_ssl": "Verify SSL certificate"
+                }
+            }
+        },
+        "error": {
+            "invalid_url": "Invalid URL",
+            "cannot_connect": "Failed to connect",
+            "invalid_credentials": "Invalid credentials",
+            "unsupported": "Router is not supported by the integration",
+            "unknown": "Unknown error"
+        },
+        "abort": {
+            "already_configured": "Router is already configured",
+            "reauth_successful": "Re-authentication successful",
+            "wrong_router": "Wrong Keenetic router: incorrect serial number"
+        }
+    },
+    "entity": {
+        "sensor": {
+            "cpuload": {
+                "name": "CPU load"
+            },
+            "memory_usage": {
+                "name": "Memory usage"
+            },
+            "uptime": {
+                "name": "Uptime"
+            },
+            "rxspeed": {
+                "name": "RX speed"
+            },
+            "txspeed": {
+                "name": "TX speed"
+            }
+        },
+        "binary_sensor": {
+            "active": {
+                "name": "Status"
+            }
+        }
+    }
+}
