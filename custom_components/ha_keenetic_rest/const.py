@@ -34,6 +34,8 @@ UPDATE_COORDINATOR_CLIENTS = "network clients"
 UPDATE_COORDINATOR_RX = "network clients RX speed"
 UPDATE_COORDINATOR_TX = "network clients TX speed"
 
+SIGNAL_NEW_NETWORK_CLIENTS = "signal_new_network_clients"
+
 
 @dataclass
 class BaseSensorDescription(SensorEntityDescription):

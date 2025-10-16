@@ -11,12 +11,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfDataRate, UnitOfTime
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
     DOMAIN,
-    UPDATE_COORDINATOR_CLIENTS,
+    SIGNAL_NEW_NETWORK_CLIENTS,
     UPDATE_COORDINATOR_RX,
     UPDATE_COORDINATOR_STAT,
     UPDATE_COORDINATOR_TX,
@@ -90,41 +90,33 @@ async def async_setup_entry(
 ) -> None:
     """Add Keentic router and Network clients SENSOR entities."""
     router: KeeneticRouter = hass.data[DOMAIN][config_entry.entry_id]
-    tracked_client_ids = set()
 
     # Add Keentic router sensors
     keenetic_sensors = [
         KeeneticSensor(
-            router,
-            description,
+            router, description
         ) for description in KEENETIC_SENSORS
     ]
     async_add_entities(keenetic_sensors)
 
+    # Add current Network clients sensors
+    add_network_client_sensors(router, router.tracked_network_client_ids,
+                               NETWORK_CLIENT_SENSORS, NetworkClientSensor,
+                               async_add_entities)
+
     # Add sensors for new Network clients
-    clients_coordinator: DataUpdateCoordinator = router.\
-        update_coordinators[UPDATE_COORDINATOR_CLIENTS]
-
     @callback
-    def _add_new_client_sensors() -> None:
-        new_client_ids = set(clients_coordinator.data.keys()).\
-            difference(tracked_client_ids)
-        tracked_client_ids.update(new_client_ids)
-
-        add_network_client_sensors(
-            router,
-            new_client_ids,
-            NETWORK_CLIENT_SENSORS,
-            NetworkClientSensor,
-            async_add_entities
-        )
+    def _add_new_client_sensors(new_client_ids) -> None:
+        add_network_client_sensors(router, new_client_ids,
+                                   NETWORK_CLIENT_SENSORS,
+                                   NetworkClientSensor,
+                                   async_add_entities)
 
     config_entry.async_on_unload(
-        clients_coordinator.async_add_listener(_add_new_client_sensors)
+        async_dispatcher_connect(
+            hass, SIGNAL_NEW_NETWORK_CLIENTS, _add_new_client_sensors
+        )
     )
-
-    # Add current Network clients sensors
-    _add_new_client_sensors()
 
 
 class KeeneticSensor(BaseSensor, SensorEntity):

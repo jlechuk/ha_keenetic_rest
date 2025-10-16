@@ -15,15 +15,17 @@ from homeassistant.const import (
     CONF_USERNAME,
     #    CONF_VERIFY_SSL,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import KeeneticAPI
 from .const import (
     DOMAIN,
     PROTOCOL_HTTP,
+    SIGNAL_NEW_NETWORK_CLIENTS,
     UPDATE_COORDINATOR_CLIENTS,
     UPDATE_COORDINATOR_FW,
     UPDATE_COORDINATOR_RX,
@@ -61,6 +63,7 @@ class KeeneticRouter:
         self.hass = hass
         self.config_entry = config_entry
         self.update_coordinators = {}
+        self.tracked_network_client_ids = []
 
         self._authenticated = False
 
@@ -76,55 +79,44 @@ class KeeneticRouter:
         """Create update coordinators to fetch data using Keenetic api."""
         await self._auth()
 
-        # Firmware
-        self.update_coordinators[UPDATE_COORDINATOR_FW] = DataUpdateCoordinator(
-            self.hass, _LOGGER,
-            name=f"{UPDATE_COORDINATOR_FW}",
-            update_method=self._get_system_fw,
-            update_interval=UPDATE_INTERVALS[UPDATE_COORDINATOR_FW]
-        )
-        await self.update_coordinators[UPDATE_COORDINATOR_FW].\
-            async_config_entry_first_refresh()
+        # Create update coordinators
+        update_methods = {
+            UPDATE_COORDINATOR_FW: self._get_system_fw,
+            UPDATE_COORDINATOR_STAT: self._get_system_stat,
+            UPDATE_COORDINATOR_CLIENTS: self._get_network_clients,
+            UPDATE_COORDINATOR_RX: self._get_network_clients_rx,
+            UPDATE_COORDINATOR_TX: self._get_network_clients_tx
+        }
 
-        # System statistics
-        self.update_coordinators[UPDATE_COORDINATOR_STAT] = DataUpdateCoordinator(
-            self.hass, _LOGGER,
-            name=f"{UPDATE_COORDINATOR_STAT}",
-            update_method=self._get_system_stat,
-            update_interval=UPDATE_INTERVALS[UPDATE_COORDINATOR_STAT]
-        )
-        await self.update_coordinators[UPDATE_COORDINATOR_STAT].\
-            async_config_entry_first_refresh()
+        for coordinator_type, method in update_methods.items():
+            self.update_coordinators[coordinator_type] = DataUpdateCoordinator(
+                self.hass, _LOGGER,
+                name=f"{coordinator_type}",
+                update_method=method,
+                update_interval=UPDATE_INTERVALS[coordinator_type]
+            )
+            await self.update_coordinators[coordinator_type].\
+                async_config_entry_first_refresh()
 
-        # Network clients
-        self.update_coordinators[UPDATE_COORDINATOR_CLIENTS] = DataUpdateCoordinator(
-            self.hass, _LOGGER,
-            name=f"{UPDATE_COORDINATOR_CLIENTS}",
-            update_method=self._get_network_clients,
-            update_interval=UPDATE_INTERVALS[UPDATE_COORDINATOR_CLIENTS]
-        )
-        await self.update_coordinators[UPDATE_COORDINATOR_CLIENTS].\
-            async_config_entry_first_refresh()
+        # Signaling
+        clients_coordinator: DataUpdateCoordinator = \
+            self.update_coordinators[UPDATE_COORDINATOR_CLIENTS]
+        self.tracked_network_client_ids = list(clients_coordinator.data.keys())
 
-        # RX speed
-        self.update_coordinators[UPDATE_COORDINATOR_RX] = DataUpdateCoordinator(
-            self.hass, _LOGGER,
-            name=f"{UPDATE_COORDINATOR_RX}",
-            update_method=self._get_network_clients_rx,
-            update_interval=UPDATE_INTERVALS[UPDATE_COORDINATOR_RX]
-        )
-        await self.update_coordinators[UPDATE_COORDINATOR_RX].\
-            async_config_entry_first_refresh()
+        ## New network clients signaling
+        @callback
+        def _new_clients_listener() -> None:
+            current_client_ids = list(clients_coordinator.data.keys())
+            new_clients_ids = set(current_client_ids).\
+                difference(self.tracked_network_client_ids)
+            self.tracked_network_client_ids = current_client_ids
 
-        # TX speed
-        self.update_coordinators[UPDATE_COORDINATOR_TX] = DataUpdateCoordinator(
-            self.hass, _LOGGER,
-            name=f"{UPDATE_COORDINATOR_TX}",
-            update_method=self._get_network_clients_tx,
-            update_interval=UPDATE_INTERVALS[UPDATE_COORDINATOR_TX]
+            if new_clients_ids:
+                async_dispatcher_send(self.hass, SIGNAL_NEW_NETWORK_CLIENTS, new_clients_ids)
+
+        self.config_entry.async_on_unload(
+            clients_coordinator.async_add_listener(_new_clients_listener)
         )
-        await self.update_coordinators[UPDATE_COORDINATOR_TX].\
-            async_config_entry_first_refresh()
 
         self.config_entry.async_on_unload(self.close)
 

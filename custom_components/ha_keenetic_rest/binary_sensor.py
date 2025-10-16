@@ -6,10 +6,15 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import DOMAIN, UPDATE_COORDINATOR_CLIENTS, NetworkClientSensorDescription
+from .const import (
+    DOMAIN,
+    SIGNAL_NEW_NETWORK_CLIENTS,
+    UPDATE_COORDINATOR_CLIENTS,
+    NetworkClientSensorDescription,
+)
 from .entity import NetworkClientBaseSensor, add_network_client_sensors
 from .router import KeeneticRouter
 
@@ -34,32 +39,25 @@ async def async_setup_entry(
 ) -> None:
     """Add Keentic router and Network clients SENSOR entities."""
     router: KeeneticRouter = hass.data[DOMAIN][config_entry.entry_id]
-    tracked_client_ids = set()
 
-    # Add sensors for new Network clients
-    clients_coordinator: DataUpdateCoordinator = router.\
-        update_coordinators[UPDATE_COORDINATOR_CLIENTS]
+    # Add current Network clients binary sensors
+    add_network_client_sensors(router, router.tracked_network_client_ids,
+                               NETWORK_CLIENT_BINARY_SENSORS,
+                               NetworkClientBinarySensor, async_add_entities)
 
+    # Add binary sensors for new Network clients
     @callback
-    def _add_new_client_sensors() -> None:
-        new_client_ids = set(clients_coordinator.data.keys()).\
-            difference(tracked_client_ids)
-        tracked_client_ids.update(new_client_ids)
-
-        add_network_client_sensors(
-            router,
-            new_client_ids,
-            NETWORK_CLIENT_BINARY_SENSORS,
-            NetworkClientBinarySensor,
-            async_add_entities
-        )
+    def _add_new_client_sensors(new_client_ids) -> None:
+        add_network_client_sensors(router, new_client_ids,
+                                   NETWORK_CLIENT_BINARY_SENSORS,
+                                   NetworkClientBinarySensor,
+                                   async_add_entities)
 
     config_entry.async_on_unload(
-        clients_coordinator.async_add_listener(_add_new_client_sensors)
+        async_dispatcher_connect(
+            hass, SIGNAL_NEW_NETWORK_CLIENTS, _add_new_client_sensors
+        )
     )
-
-    # Add current Network clients sensors
-    _add_new_client_sensors()
 
 
 class NetworkClientBinarySensor(NetworkClientBaseSensor, BinarySensorEntity):
