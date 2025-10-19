@@ -25,8 +25,8 @@ NETWORK_CLIENT_BINARY_SENSORS: tuple[NetworkClientSensorDescription, ...] = (
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         update_coordinator=UPDATE_COORDINATOR_CLIENTS,
         extra_attributes = [
-            "mac", "hostname", "name", "registered",
-            "access", "link", "speed", "port"
+            "mac", "ip", "hostname", "name", "interface",
+            "speed", "port", "ssid", "security", "rssi"
         ]
     ),
 )
