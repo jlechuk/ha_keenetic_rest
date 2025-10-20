@@ -5,38 +5,19 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import BaseSensorDescription
+from .const import BaseKeeneticEntityDescription
 from .router import KeeneticRouter
 
 
-@callback
-def add_network_client_sensors(
-    router: KeeneticRouter,
-    client_ids: list | set,
-    sensor_descriptions: tuple,
-    sensor_entity_class: type,
-    async_add_entities: AddEntitiesCallback
-) -> None:
-    """Add Network clients sensors."""
-    network_client_sensors = [
-        sensor_entity_class(
-            router,
-            description,
-            client_id
-        ) for description in sensor_descriptions for client_id in client_ids
-    ]
-    async_add_entities(network_client_sensors)
-
-
-class BaseSensor(CoordinatorEntity):
-    """Base class for Keentic router and Network clients sensors."""
-    entity_description: BaseSensorDescription
+class BaseKeeneticEntity(CoordinatorEntity):
+    """Base class for all integration entities."""
+    entity_description: BaseKeeneticEntityDescription
     _attr_has_entity_name = True
 
     def __init__(  # noqa: D107
         self,
         router: KeeneticRouter,
-        entity_description: BaseSensorDescription
+        entity_description: BaseKeeneticEntityDescription
     ) -> None:
         coordinator = router.\
             update_coordinators[entity_description.update_coordinator]
@@ -46,12 +27,12 @@ class BaseSensor(CoordinatorEntity):
         self.entity_description = entity_description
 
 
-class NetworkClientBaseSensor(BaseSensor):
-    """Base class for Network client sensor."""
+class BaseKeeneticNetworkClientEntity(BaseKeeneticEntity):
+    """Base class for Network client entities."""
     def __init__(  # noqa: D107
         self,
         router: KeeneticRouter,
-        entity_description: BaseSensorDescription,
+        entity_description: BaseKeeneticEntityDescription,
         client_id: str
     ) -> None:
         super().__init__(router, entity_description)
@@ -76,5 +57,22 @@ class NetworkClientBaseSensor(BaseSensor):
     @property
     def device_info(self) -> DeviceInfo:
         """Network client device info."""
-        return self.router.network_client_device_info(self.client_id)
+        return self.router.get_network_client_device_info(self.client_id)
 
+
+@callback
+def add_network_client_entities(
+    router: KeeneticRouter,
+    client_ids: list | set,
+    entity_descriptions: tuple[BaseKeeneticEntityDescription, ...],
+    async_add_entities: AddEntitiesCallback
+) -> None:
+    """Add Network client entities."""
+    network_client_sensors = [
+        description.entity_class(
+            router,
+            description,
+            client_id
+        ) for description in entity_descriptions for client_id in client_ids
+    ]
+    async_add_entities(network_client_sensors)

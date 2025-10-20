@@ -99,14 +99,14 @@ class KeeneticRouter:
                 async_config_entry_first_refresh()
 
         # Signaling
-        clients_coordinator: DataUpdateCoordinator = \
-            self.update_coordinators[UPDATE_COORDINATOR_CLIENTS]
-        self.tracked_network_client_ids = list(clients_coordinator.data.keys())
+        self.tracked_network_client_ids = list(
+            self.get_network_clients_data().keys()
+        )
 
         ## New network clients signaling
         @callback
         def _new_clients_listener() -> None:
-            current_client_ids = list(clients_coordinator.data.keys())
+            current_client_ids = list(self.get_network_clients_data().keys())
             new_clients_ids = set(current_client_ids).\
                 difference(self.tracked_network_client_ids)
             self.tracked_network_client_ids = current_client_ids
@@ -115,7 +115,8 @@ class KeeneticRouter:
                 async_dispatcher_send(self.hass, SIGNAL_NEW_NETWORK_CLIENTS, new_clients_ids)
 
         self.config_entry.async_on_unload(
-            clients_coordinator.async_add_listener(_new_clients_listener)
+            self.update_coordinators[UPDATE_COORDINATOR_CLIENTS].\
+                async_add_listener(_new_clients_listener)
         )
 
         self.config_entry.async_on_unload(self.close)
@@ -226,6 +227,11 @@ class KeeneticRouter:
         return net_clients
 
 
+    def get_network_clients_data(self) -> dict:
+        """Get general network clients data."""
+        return self.update_coordinators[UPDATE_COORDINATOR_CLIENTS].data
+
+
     @property
     def unique_id(self) -> str:
         """Keenetic router unique_id."""
@@ -253,11 +259,17 @@ class KeeneticRouter:
         )
 
 
-    def network_client_device_info(self, client_id) -> DeviceInfo:
+    def get_network_client_device_info(self, client_id) -> DeviceInfo:
         """Return Network client DeviceInfo."""
-        network_clients = self.update_coordinators[UPDATE_COORDINATOR_CLIENTS].data
+        client_data = self.get_network_clients_data()[client_id]
+        client_name = client_data["mac"]
+        if client_data["hostname"]:
+            client_name = client_data["hostname"]
+        if client_data["name"]:
+            client_name = client_data["name"]
+
         return DeviceInfo(
             identifiers={(DOMAIN, f"{self.unique_id}-{client_id}")},
-            name=network_clients[client_id]["name"],
+            name=client_name,
             via_device=self.device_identifier
         )

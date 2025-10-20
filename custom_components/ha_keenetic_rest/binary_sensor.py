@@ -1,8 +1,11 @@
 # noqa: D100
 
+from dataclasses import dataclass
+
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
+    BinarySensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -13,13 +16,32 @@ from .const import (
     DOMAIN,
     SIGNAL_NEW_NETWORK_CLIENTS,
     UPDATE_COORDINATOR_CLIENTS,
-    NetworkClientSensorDescription,
+    BaseKeeneticEntityDescription,
 )
-from .entity import NetworkClientBaseSensor, add_network_client_sensors
+from .entity import BaseKeeneticNetworkClientEntity, add_network_client_entities
 from .router import KeeneticRouter
 
-NETWORK_CLIENT_BINARY_SENSORS: tuple[NetworkClientSensorDescription, ...] = (
-    NetworkClientSensorDescription(
+
+class NetworkClientBinarySensor(
+    BaseKeeneticNetworkClientEntity, BinarySensorEntity):
+    """Network client binary sensor."""
+    @property
+    def is_on(self) -> bool | None:  # noqa: D102
+        if self.client_id in self.coordinator.data:
+            return self.coordinator.\
+                data[self.client_id][self.entity_description.key]
+        return None
+
+
+@dataclass
+class NetworkClientBinarySensorDescription(
+    BaseKeeneticEntityDescription, BinarySensorEntityDescription):
+    """Network client binary sensor description."""
+    entity_class = NetworkClientBinarySensor
+
+
+NETWORK_CLIENT_BINARY_SENSORS: tuple[NetworkClientBinarySensorDescription, ...] = (
+    NetworkClientBinarySensorDescription(
         key="active",
         translation_key="active",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
@@ -37,20 +59,19 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Add Keentic router and Network clients SENSOR entities."""
+    """Add Router and Network clients binary sensors."""
     router: KeeneticRouter = hass.data[DOMAIN][config_entry.entry_id]
 
     # Add current Network clients binary sensors
-    add_network_client_sensors(router, router.tracked_network_client_ids,
+    add_network_client_entities(router, router.tracked_network_client_ids,
                                NETWORK_CLIENT_BINARY_SENSORS,
-                               NetworkClientBinarySensor, async_add_entities)
+                               async_add_entities)
 
     # Add binary sensors for new Network clients
     @callback
     def _add_new_client_sensors(new_client_ids) -> None:
-        add_network_client_sensors(router, new_client_ids,
+        add_network_client_entities(router, new_client_ids,
                                    NETWORK_CLIENT_BINARY_SENSORS,
-                                   NetworkClientBinarySensor,
                                    async_add_entities)
 
     config_entry.async_on_unload(
@@ -58,13 +79,3 @@ async def async_setup_entry(
             hass, SIGNAL_NEW_NETWORK_CLIENTS, _add_new_client_sensors
         )
     )
-
-
-class NetworkClientBinarySensor(NetworkClientBaseSensor, BinarySensorEntity):
-    """Network client binary sensor."""
-    @property
-    def is_on(self) -> bool | None:  # noqa: D102
-        if self.client_id in self.coordinator.data:
-            return self.coordinator.\
-                data[self.client_id][self.entity_description.key]
-        return None

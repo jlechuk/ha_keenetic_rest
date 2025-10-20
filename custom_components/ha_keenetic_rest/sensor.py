@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
+    SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -20,20 +21,72 @@ from .const import (
     UPDATE_COORDINATOR_RX,
     UPDATE_COORDINATOR_STAT,
     UPDATE_COORDINATOR_TX,
-    BaseSensorDescription,
-    NetworkClientSensorDescription,
+    BaseKeeneticEntityDescription,
 )
-from .entity import BaseSensor, NetworkClientBaseSensor, add_network_client_sensors
+from .entity import (
+    BaseKeeneticEntity,
+    BaseKeeneticNetworkClientEntity,
+    add_network_client_entities,
+)
 from .router import KeeneticRouter
 
 
+class RouterSensor(BaseKeeneticEntity, SensorEntity):
+    """Router sensor."""
+    def __init__(  # noqa: D107
+        self,
+        router: KeeneticRouter,
+        entity_description: BaseKeeneticEntityDescription
+    ) -> None:
+        super().__init__(router, entity_description)
+        self._attr_unique_id = \
+            f"{router.unique_id}-{entity_description.key}".lower()
+
+    @property
+    def native_value(self) -> float | int | str | None:  # noqa: D102
+        return self.coordinator.data[self.entity_description.key]
+
+    @property
+    def extra_state_attributes(self) -> dict:  # noqa: D102
+        attributes = self.entity_description.extra_attributes
+        if attributes:
+            return {
+                attr: self.coordinator.data[attr] for attr in attributes
+            }
+        return {}
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Keenetic router device info."""
+        return self.router.device_info
+
+
+class NetworkClientSensor(BaseKeeneticNetworkClientEntity, SensorEntity):
+    """Network client sensor."""
+    @property
+    def native_value(self) ->float | int | str | None:  # noqa: D102
+        if self.client_id in self.coordinator.data:
+            return self.coordinator.\
+                data[self.client_id][self.entity_description.key]
+        return None
+
+
 @dataclass
-class KeeneticSensorDescription(BaseSensorDescription):
-    """Keenetic sensor description."""
+class RouterSensorDescription(
+    BaseKeeneticEntityDescription, SensorEntityDescription):
+    """Router sensor description."""
+    entity_class = RouterSensor
 
 
-KEENETIC_SENSORS: tuple[KeeneticSensorDescription, ...] = (
-    KeeneticSensorDescription(
+@dataclass
+class NetworkClientSensorDescription(
+    BaseKeeneticEntityDescription, SensorEntityDescription):
+    """Network client sensor description."""
+    entity_class = NetworkClientSensor
+
+
+KEENETIC_SENSORS: tuple[RouterSensorDescription, ...] = (
+    RouterSensorDescription(
         key="cpuload",
         translation_key="cpuload",
         device_class=SensorDeviceClass.POWER_FACTOR,
@@ -41,7 +94,7 @@ KEENETIC_SENSORS: tuple[KeeneticSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         update_coordinator = UPDATE_COORDINATOR_STAT
     ),
-    KeeneticSensorDescription(
+    RouterSensorDescription(
         key="memory_usage",
         translation_key="memory_usage",
         device_class=SensorDeviceClass.POWER_FACTOR,
@@ -50,7 +103,7 @@ KEENETIC_SENSORS: tuple[KeeneticSensorDescription, ...] = (
         update_coordinator = UPDATE_COORDINATOR_STAT,
         extra_attributes = ["memfree", "memtotal"]
     ),
-    KeeneticSensorDescription(
+    RouterSensorDescription(
         key="uptime",
         translation_key="uptime",
         device_class=SensorDeviceClass.DURATION,
@@ -88,28 +141,26 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Add Keentic router and Network clients SENSOR entities."""
+    """Add Router and Network clients sensors."""
     router: KeeneticRouter = hass.data[DOMAIN][config_entry.entry_id]
 
-    # Add Keentic router sensors
+    # Add Router sensors
     keenetic_sensors = [
-        KeeneticSensor(
+        description.entity_class(
             router, description
         ) for description in KEENETIC_SENSORS
     ]
     async_add_entities(keenetic_sensors)
 
     # Add current Network clients sensors
-    add_network_client_sensors(router, router.tracked_network_client_ids,
-                               NETWORK_CLIENT_SENSORS, NetworkClientSensor,
-                               async_add_entities)
+    add_network_client_entities(router, router.tracked_network_client_ids,
+                               NETWORK_CLIENT_SENSORS, async_add_entities)
 
     # Add sensors for new Network clients
     @callback
     def _add_new_client_sensors(new_client_ids) -> None:
-        add_network_client_sensors(router, new_client_ids,
+        add_network_client_entities(router, new_client_ids,
                                    NETWORK_CLIENT_SENSORS,
-                                   NetworkClientSensor,
                                    async_add_entities)
 
     config_entry.async_on_unload(
@@ -118,42 +169,3 @@ async def async_setup_entry(
         )
     )
 
-
-class KeeneticSensor(BaseSensor, SensorEntity):
-    """Keenetic router sensor."""
-    def __init__(  # noqa: D107
-        self,
-        router: KeeneticRouter,
-        entity_description: BaseSensorDescription
-    ) -> None:
-        super().__init__(router, entity_description)
-        self._attr_unique_id = \
-            f"{router.unique_id}-{entity_description.key}".lower()
-
-    @property
-    def native_value(self) -> float | int | str | None:  # noqa: D102
-        return self.coordinator.data[self.entity_description.key]
-
-    @property
-    def extra_state_attributes(self) -> dict:  # noqa: D102
-        attributes = self.entity_description.extra_attributes
-        if attributes:
-            return {
-                attr: self.coordinator.data[attr] for attr in attributes
-            }
-        return {}
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Keenetic router device info."""
-        return self.router.device_info
-
-
-class NetworkClientSensor(NetworkClientBaseSensor, SensorEntity):
-    """Network client sensor."""
-    @property
-    def native_value(self) ->float | int | str | None:  # noqa: D102
-        if self.client_id in self.coordinator.data:
-            return self.coordinator.\
-                data[self.client_id][self.entity_description.key]
-        return None

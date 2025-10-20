@@ -1,6 +1,11 @@
 # noqa: D100
 
-from homeassistant.components.device_tracker import ScannerEntity
+from dataclasses import dataclass
+
+from homeassistant.components.device_tracker import (
+    ScannerEntity,
+    ScannerEntityDescription,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -10,49 +15,14 @@ from .const import (
     DOMAIN,
     SIGNAL_NEW_NETWORK_CLIENTS,
     UPDATE_COORDINATOR_CLIENTS,
-    NetworkClientSensorDescription,
+    BaseKeeneticEntityDescription,
 )
-from .entity import NetworkClientBaseSensor, add_network_client_sensors
+from .entity import BaseKeeneticNetworkClientEntity, add_network_client_entities
 from .router import KeeneticRouter
 
-NETWORK_CLIENT_SCANNER: tuple[NetworkClientSensorDescription, ...] = (
-    NetworkClientSensorDescription(
-        key="scanner",
-        translation_key="scanner",
-        update_coordinator=UPDATE_COORDINATOR_CLIENTS
-    ),
-)
 
-
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback
-) -> None:
-    """Add Keentic router and Network clients SENSOR entities."""
-    router: KeeneticRouter = hass.data[DOMAIN][config_entry.entry_id]
-
-    # Add current Network clients Scanner
-    add_network_client_sensors(router, router.tracked_network_client_ids,
-                               NETWORK_CLIENT_SCANNER,
-                               NetworkClientScanner, async_add_entities)
-
-    # Add Scanner for new Network clients
-    @callback
-    def _add_new_client_sensors(new_client_ids) -> None:
-        add_network_client_sensors(router, new_client_ids,
-                                   NETWORK_CLIENT_SCANNER,
-                                   NetworkClientScanner, async_add_entities)
-
-    config_entry.async_on_unload(
-        async_dispatcher_connect(
-            hass, SIGNAL_NEW_NETWORK_CLIENTS, _add_new_client_sensors
-        )
-    )
-
-
-class NetworkClientScanner(NetworkClientBaseSensor, ScannerEntity):
-    """Network client Scanner."""
+class NetworkClientScanner(BaseKeeneticNetworkClientEntity, ScannerEntity):
+    """Network client scanner."""
 
     @property
     def is_connected(self) -> bool:  # noqa: D102
@@ -69,3 +39,45 @@ class NetworkClientScanner(NetworkClientBaseSensor, ScannerEntity):
     @property
     def mac_address(self) -> str:  # noqa: D102
         return self.coordinator.data[self.client_id]["mac"]
+
+
+@dataclass
+class NetworkClientScannerDescription(
+    BaseKeeneticEntityDescription, ScannerEntityDescription):
+    """Network client scanner description."""
+    entity_class = NetworkClientScanner
+    entity_registry_enabled_default = False
+
+
+NETWORK_CLIENT_SCANNER: tuple[NetworkClientScannerDescription, ...] = (
+    NetworkClientScannerDescription(
+        key="scanner",
+        translation_key="scanner",
+        update_coordinator=UPDATE_COORDINATOR_CLIENTS
+    ),
+)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback
+) -> None:
+    """Add Network clients scanners."""
+    router: KeeneticRouter = hass.data[DOMAIN][config_entry.entry_id]
+
+    # Add current Network clients scanners
+    add_network_client_entities(router, router.tracked_network_client_ids,
+                               NETWORK_CLIENT_SCANNER, async_add_entities)
+
+    # Add scanners for new Network clients
+    @callback
+    def _add_new_client_sensors(new_client_ids) -> None:
+        add_network_client_entities(router, new_client_ids,
+                                   NETWORK_CLIENT_SCANNER, async_add_entities)
+
+    config_entry.async_on_unload(
+        async_dispatcher_connect(
+            hass, SIGNAL_NEW_NETWORK_CLIENTS, _add_new_client_sensors
+        )
+    )

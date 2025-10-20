@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from homeassistant.components.sensor import SensorEntityDescription
+from homeassistant.helpers.entity import EntityDescription
 
 DOMAIN = 'ha_keenetic_rest'
 
@@ -38,12 +38,8 @@ SIGNAL_NEW_NETWORK_CLIENTS = "signal_new_network_clients"
 
 
 @dataclass
-class BaseSensorDescription(SensorEntityDescription):
-    """Common sensor description."""
+class BaseKeeneticEntityDescription(EntityDescription):
+    """Base class for all integration entity descriptions."""
     extra_attributes: list | None = None
     update_coordinator: str = None
-
-
-@dataclass
-class NetworkClientSensorDescription(BaseSensorDescription):
-    """Connected device sensor description."""
+    entity_class: type = None
