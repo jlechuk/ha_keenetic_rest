@@ -47,6 +47,11 @@
             "active": {
                 "name": "Status"
             }
+        },
+        "switch": {
+            "registered": {
+                "name": "Registered"
+            }
         }
     }
 }

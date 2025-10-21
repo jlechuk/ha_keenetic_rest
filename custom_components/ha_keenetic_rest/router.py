@@ -140,7 +140,8 @@ class KeeneticRouter:
         self._authenticated = True
 
 
-    async def _get_data(self, api_method: callable, try_auth: bool = False) -> dict:
+    async def _get_data(self, api_func: callable,
+                        try_auth: bool = False, **kwargs) -> dict:
         try:
             if not self._authenticated and try_auth:
                 try:
@@ -151,7 +152,7 @@ class KeeneticRouter:
                     )
 
             if self._authenticated:
-                return await api_method()
+                return await api_func(**kwargs)
 
             raise UpdateFailed(
                 f"Failed to fetch data from "
@@ -192,7 +193,7 @@ class KeeneticRouter:
 
 
     async def _get_network_clients(self, _ = None) -> None:
-        """Fetch Keenetic network clients."""
+        """Fetch Network clients general data."""
         data = await self._get_data(self.api.get_network_clients)
 
         network_clients_data = {}
@@ -204,7 +205,7 @@ class KeeneticRouter:
 
 
     async def _get_network_clients_rx(self) -> dict:
-        """Fetch Keenetic network clients RX speed."""
+        """Fetch Network clients RX speed."""
         data = await self._get_data(self.api.get_clients_rx_speed)
 
         net_clients = {}
@@ -216,7 +217,7 @@ class KeeneticRouter:
 
 
     async def _get_network_clients_tx(self) -> dict:
-        """Fetch Keenetic network clients RX speed."""
+        """Fetch Network clients RX speed."""
         data = await self._get_data(self.api.get_clients_tx_speed)
 
         net_clients = {}
@@ -227,8 +228,22 @@ class KeeneticRouter:
         return net_clients
 
 
+    async def register_network_client(
+            self, mac: str,
+            name: str | None = None,
+            unregister=False
+    ) -> None:
+        """Register/Unregister Network client."""
+        if not unregister:
+            await self._get_data(self.api.register_network_client,
+                                 mac=mac, name=name)
+        else:
+            await self._get_data(self.api.unregister_network_client,
+                                 mac=mac)
+
+
     def get_network_clients_data(self) -> dict:
-        """Get general network clients data."""
+        """Get general Network clients data."""
         return self.update_coordinators[UPDATE_COORDINATOR_CLIENTS].data
 
 

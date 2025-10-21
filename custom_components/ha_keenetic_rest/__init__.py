@@ -10,7 +10,12 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from .const import DOMAIN
 from .router import KeeneticAuthFailed, KeeneticRouter
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.DEVICE_TRACKER, Platform.BINARY_SENSOR]
+PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.DEVICE_TRACKER,
+    Platform.BINARY_SENSOR,
+    Platform.SWITCH
+]
 
 
 async def async_setup_entry(

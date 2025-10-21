@@ -78,6 +78,18 @@ class KeeneticAPI:
             return None
 
 
+    async def _post_data(
+            self,
+            url: str,
+            params: dict | None = None
+    ) -> list | dict | None:
+        async with self._session.post(url=url, json=params) as resp:
+            if resp.status == 200:
+                return await resp.json()
+            resp.raise_for_status()
+            return None
+
+
     async def get_system_info(self) -> list | dict:
         """Get system information."""
         return await self._get_data("rci/show/defaults")
@@ -112,3 +124,19 @@ class KeeneticAPI:
             url="rci/show/ip/hotspot/summary",
             params={'attribute': "txspeed", "detail": 0}
         ))["host"]
+
+
+    async def register_network_client(self, mac: str, name: str) -> list | dict:
+        """Register network client."""
+        return await self._post_data(
+            url="rci/known/host",
+            params={"name": name, "mac": mac}
+        )
+
+
+    async def unregister_network_client(self, mac: str) -> list | dict:
+        """Unregister network client."""
+        return await self._post_data(
+            url="rci/known/host",
+            params={"mac": mac, "no": True}
+        )
