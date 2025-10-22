@@ -140,3 +140,19 @@ class KeeneticAPI:
             url="rci/known/host",
             params={"mac": mac, "no": True}
         )
+
+
+    async def permit_internet_access(self, mac: str) -> list | dict:
+        """Permit network client internaet access."""
+        return await self._post_data(
+            url="rci/ip/hotspot/host",
+            params={"mac": mac, "access": "permit"}
+        )
+
+
+    async def deny_internet_access(self, mac: str) -> list | dict:
+        """Deny network client internaet access."""
+        return await self._post_data(
+            url="rci/ip/hotspot/host",
+            params={"mac": mac, "access": "deny"}
+        )

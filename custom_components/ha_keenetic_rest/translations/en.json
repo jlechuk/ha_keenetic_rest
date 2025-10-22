@@ -49,9 +49,13 @@
             }
         },
         "switch": {
-            "registered": {
+            "client_registered": {
                 "name": "Registered"
+            },
+            "client_internet_access": {
+                "name": "Internet access"
             }
+
         }
     }
 }

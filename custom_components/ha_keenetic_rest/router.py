@@ -228,11 +228,11 @@ class KeeneticRouter:
         return net_clients
 
 
-    async def register_network_client(self, mac: str,
-                                      name: str | None = None,
-                                      unregister: bool = False) -> None:
+    async def change_client_registered_setting(self, mac: str,
+                                               name: str | None = None,
+                                               register: bool = True) -> None:
         """Register/Unregister Network client."""
-        if not unregister:
+        if register:
             await self._get_data(self.api.register_network_client,
                                  mac=mac, name=name)
         else:
@@ -240,9 +240,25 @@ class KeeneticRouter:
                                  mac=mac)
 
 
+    async def change_client_internet_access_setting(self, mac: str,
+                                                    permit: bool = True) -> None:
+        """Permit/Deny Network client Internet access."""
+        if permit:
+            await self._get_data(self.api.permit_internet_access,
+                                 mac=mac)
+        else:
+            await self._get_data(self.api.deny_internet_access,
+                                 mac=mac)
+
+
     def get_network_clients_data(self) -> dict:
         """Get general Network clients data."""
         return self.update_coordinators[UPDATE_COORDINATOR_CLIENTS].data
+
+
+    def is_client_registered(self, client_id) -> bool:
+        """Get Network client Registered field."""
+        return self.get_network_clients_data()[client_id]["registered"]
 
 
     @property

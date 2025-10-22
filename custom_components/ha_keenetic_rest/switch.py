@@ -36,13 +36,45 @@ class NetworkClientRegisteredSwitch(
     async def async_turn_on(self, **kwargs):  # noqa: D102
         mac = self.coordinator.data[self.client_id]["mac"]
         name = self.device_info["name"]
-        await self.router.register_network_client(mac=mac, name=name)
+        await self.router.change_client_registered_setting(mac=mac, name=name)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):  # noqa: D102
         mac = self.coordinator.data[self.client_id]["mac"]
-        await self.router.register_network_client(mac=mac, unregister=True)
+        await self.router.change_client_registered_setting(mac=mac, register=False)
         await self.coordinator.async_request_refresh()
+
+
+class NetworkClientInternetAccessSwitch(
+    BaseKeeneticNetworkClientEntity, SwitchEntity):
+    """Network client Internet access switch."""
+
+    @property
+    def is_on(self) -> bool | None:  # noqa: D102
+        if self.client_id in self.coordinator.data:
+            state = self.coordinator.\
+                data[self.client_id][self.entity_description.key]
+            if state == "permit":
+                return True
+            else:  # noqa: RET505
+                return False
+        return None
+
+    async def async_turn_on(self, **kwargs):  # noqa: D102
+        mac = self.coordinator.data[self.client_id]["mac"]
+        await self.router.change_client_internet_access_setting(mac=mac)
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs):  # noqa: D102
+        mac = self.coordinator.data[self.client_id]["mac"]
+        await self.router.change_client_internet_access_setting(mac=mac,
+                                                                permit=False)
+        await self.coordinator.async_request_refresh()
+
+    @property
+    def available(self) -> bool:  # noqa: D102
+        return super().available\
+              and self.router.is_client_registered(self.client_id)
 
 
 @dataclass
@@ -54,11 +86,18 @@ class NetworkClientSwitchDescription(
 NETWORK_CLIENT_SWITCHES: tuple[NetworkClientSwitchDescription, ...] = (
     NetworkClientSwitchDescription(
         key="registered",
-        translation_key="registered",
+        translation_key="client_registered",
         device_class=SwitchDeviceClass.SWITCH,
         update_coordinator=UPDATE_COORDINATOR_CLIENTS,
         entity_class=NetworkClientRegisteredSwitch
     ),
+    NetworkClientSwitchDescription(
+        key="access",
+        translation_key="client_internet_access",
+        device_class=SwitchDeviceClass.SWITCH,
+        update_coordinator=UPDATE_COORDINATOR_CLIENTS,
+        entity_class=NetworkClientInternetAccessSwitch
+    )
 )
 
 

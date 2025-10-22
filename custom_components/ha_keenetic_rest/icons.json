@@ -16,6 +16,14 @@
             "txspeed": {
                 "default": "mdi:speedometer"
             }
+        },
+        "switch": {
+            "client_internet_access": {
+                "state": {
+                    "on": "mdi:network",
+                    "off": "mdi:network-off"
+                }
+            }
         }
     }
 }
