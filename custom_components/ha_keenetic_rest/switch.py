@@ -25,6 +25,7 @@ from .router import KeeneticRouter
 class NetworkClientRegisteredSwitch(
     BaseKeeneticNetworkClientEntity, SwitchEntity):
     """Network client Registered switch."""
+
     @property
     def is_on(self) -> bool | None:  # noqa: D102
         if self.client_id in self.coordinator.data:
@@ -36,14 +37,12 @@ class NetworkClientRegisteredSwitch(
         mac = self.coordinator.data[self.client_id]["mac"]
         name = self.device_info["name"]
         await self.router.register_network_client(mac=mac, name=name)
-        await self.coordinator.async_refresh()
-        self.async_write_ha_state()
+        await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):  # noqa: D102
         mac = self.coordinator.data[self.client_id]["mac"]
         await self.router.register_network_client(mac=mac, unregister=True)
-        await self.coordinator.async_refresh()
-        self.async_write_ha_state()
+        await self.coordinator.async_request_refresh()
 
 
 @dataclass

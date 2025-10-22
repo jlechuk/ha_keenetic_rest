@@ -228,11 +228,9 @@ class KeeneticRouter:
         return net_clients
 
 
-    async def register_network_client(
-            self, mac: str,
-            name: str | None = None,
-            unregister=False
-    ) -> None:
+    async def register_network_client(self, mac: str,
+                                      name: str | None = None,
+                                      unregister: bool = False) -> None:
         """Register/Unregister Network client."""
         if not unregister:
             await self._get_data(self.api.register_network_client,
