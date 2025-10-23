@@ -106,10 +106,10 @@ class KeeneticRouter:
         ## New network clients signaling
         @callback
         def _new_clients_listener() -> None:
-            current_client_ids = list(self.get_network_clients_data().keys())
-            new_clients_ids = set(current_client_ids).\
+            current_client_ids = set(self.get_network_clients_data().keys())
+            new_clients_ids = current_client_ids.\
                 difference(self.tracked_network_client_ids)
-            self.tracked_network_client_ids = current_client_ids
+            self.tracked_network_client_ids.extend(new_clients_ids)
 
             if new_clients_ids:
                 async_dispatcher_send(self.hass, SIGNAL_NEW_NETWORK_CLIENTS, new_clients_ids)
