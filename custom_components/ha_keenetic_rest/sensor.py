@@ -11,7 +11,6 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfDataRate, UnitOfTime
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -24,50 +23,27 @@ from .const import (
     BaseKeeneticEntityDescription,
 )
 from .entity import (
-    BaseKeeneticEntity,
     BaseKeeneticNetworkClientEntity,
+    BaseKeeneticRouterEntity,
     add_network_client_entities,
 )
 from .router import KeeneticRouter
 
 
-class RouterSensor(BaseKeeneticEntity, SensorEntity):
+class RouterSensor(BaseKeeneticRouterEntity, SensorEntity):
     """Router sensor."""
-    def __init__(  # noqa: D107
-        self,
-        router: KeeneticRouter,
-        entity_description: BaseKeeneticEntityDescription
-    ) -> None:
-        super().__init__(router, entity_description)
-        self._attr_unique_id = \
-            f"{router.unique_id}-{entity_description.key}".lower()
-
     @property
     def native_value(self) -> float | int | str | None:  # noqa: D102
-        return self.coordinator.data[self.entity_description.key]
-
-    @property
-    def extra_state_attributes(self) -> dict:  # noqa: D102
-        attributes = self.entity_description.extra_attributes
-        if attributes:
-            return {
-                attr: self.coordinator.data[attr] for attr in attributes
-            }
-        return {}
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Keenetic router device info."""
-        return self.router.device_info
+        return self._get_coordinator_data()[self.entity_description.key]
 
 
 class NetworkClientSensor(BaseKeeneticNetworkClientEntity, SensorEntity):
     """Network client sensor."""
     @property
     def native_value(self) ->float | int | str | None:  # noqa: D102
-        if self.client_id in self.coordinator.data:
-            return self.coordinator.\
-                data[self.client_id][self.entity_description.key]
+        data = self._get_coordinator_data()
+        if data:
+            return data[self.entity_description.key]
         return None
 
 
@@ -85,7 +61,7 @@ class NetworkClientSensorDescription(
     entity_class = NetworkClientSensor
 
 
-KEENETIC_SENSORS: tuple[RouterSensorDescription, ...] = (
+ROUTER_SENSORS: tuple[RouterSensorDescription, ...] = (
     RouterSensorDescription(
         key="cpuload",
         translation_key="cpuload",
@@ -101,7 +77,8 @@ KEENETIC_SENSORS: tuple[RouterSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
         update_coordinator = UPDATE_COORDINATOR_STAT,
-        extra_attributes = ["memfree", "memtotal"]
+        extra_attributes = {"Memory free": "memfree",
+                            "Memory total": "memtotal"}
     ),
     RouterSensorDescription(
         key="uptime",
@@ -111,7 +88,7 @@ KEENETIC_SENSORS: tuple[RouterSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.SECONDS,
         suggested_display_precision=0,
         update_coordinator = UPDATE_COORDINATOR_STAT
-    ),
+    )
 )
 
 NETWORK_CLIENT_SENSORS: tuple[NetworkClientSensorDescription, ...] = (
@@ -148,7 +125,7 @@ async def async_setup_entry(
     keenetic_sensors = [
         description.entity_class(
             router, description
-        ) for description in KEENETIC_SENSORS
+        ) for description in ROUTER_SENSORS
     ]
     async_add_entities(keenetic_sensors)
 

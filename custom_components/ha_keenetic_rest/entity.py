@@ -1,5 +1,7 @@
 # noqa: D100
 
+from typing import Any
+
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -26,6 +28,57 @@ class BaseKeeneticEntity(CoordinatorEntity):
         self.router = router
         self.entity_description = entity_description
 
+    @property
+    def available(self) -> bool:  # noqa: D102
+        return super().available
+
+    @property
+    def extra_state_attributes(self) -> dict:  # noqa: D102
+        attributes = {}
+        attr_description = self.entity_description.extra_attributes
+        data = self._get_coordinator_data()
+        if attr_description and data:
+            for attr_name, attr_key in attr_description.items():
+                attributes[attr_name] = self._get_attribute_value(attr_key, data)
+        return attributes
+
+    def _get_coordinator_data(self) -> Any:
+        raise NotImplementedError
+
+    @staticmethod
+    def _get_attribute_value(attr_key: dict | str, data: dict) -> Any:
+        if data is None:
+            return None
+
+        if type(attr_key) is dict:
+            key = next(iter(attr_key))
+            return BaseKeeneticEntity._get_attribute_value(attr_key[key],
+                                                           data.get(key))
+        elif type(attr_key) is str:  # noqa: RET505
+            return data.get(attr_key)
+        else:
+            return None
+
+
+class BaseKeeneticRouterEntity(BaseKeeneticEntity):
+    """Base class for Router entities."""
+    def __init__(  # noqa: D107
+        self,
+        router: KeeneticRouter,
+        entity_description: BaseKeeneticEntityDescription
+    ) -> None:
+        super().__init__(router, entity_description)
+        self._attr_unique_id = \
+            f"{router.unique_id}-{entity_description.key}".lower()
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Router device info."""
+        return self.router.device_info
+
+    def _get_coordinator_data(self):
+        return self.coordinator.data
+
 
 class BaseKeeneticNetworkClientEntity(BaseKeeneticEntity):
     """Base class for Network client entities."""
@@ -41,16 +94,6 @@ class BaseKeeneticNetworkClientEntity(BaseKeeneticEntity):
             f"{router.unique_id}-{client_id}-{entity_description.key}".lower()
 
     @property
-    def extra_state_attributes(self) -> dict:  # noqa: D102
-        attrs = {}
-        attr_keys = self.entity_description.extra_attributes
-        client_data = self.coordinator.data.get(self.client_id, None)
-        if attr_keys and client_data:
-            for attr_key in attr_keys:
-                attrs[attr_key] = client_data.get(attr_key, None)
-        return attrs
-
-    @property
     def available(self) -> bool:  # noqa: D102
         return super().available and self.client_id in self.coordinator.data
 
@@ -58,6 +101,9 @@ class BaseKeeneticNetworkClientEntity(BaseKeeneticEntity):
     def device_info(self) -> DeviceInfo:
         """Network client device info."""
         return self.router.get_network_client_device_info(self.client_id)
+
+    def _get_coordinator_data(self):
+        return self.coordinator.data.get(self.client_id, None)
 
 
 @callback

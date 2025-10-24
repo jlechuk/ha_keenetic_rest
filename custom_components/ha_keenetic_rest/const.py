@@ -30,6 +30,7 @@ ABORT_WRONG_ROUTER = "wrong_router"
 
 UPDATE_COORDINATOR_FW = "system firmware"
 UPDATE_COORDINATOR_STAT = "system statistics"
+UPDATE_COORDINATOR_INTERNET = "internet status"
 UPDATE_COORDINATOR_CLIENTS = "network clients"
 UPDATE_COORDINATOR_RX = "network clients RX speed"
 UPDATE_COORDINATOR_TX = "network clients TX speed"

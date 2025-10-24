@@ -28,6 +28,7 @@ from .const import (
     SIGNAL_NEW_NETWORK_CLIENTS,
     UPDATE_COORDINATOR_CLIENTS,
     UPDATE_COORDINATOR_FW,
+    UPDATE_COORDINATOR_INTERNET,
     UPDATE_COORDINATOR_RX,
     UPDATE_COORDINATOR_STAT,
     UPDATE_COORDINATOR_TX,
@@ -39,6 +40,7 @@ _LOGGER = logging.getLogger(__name__)
 UPDATE_INTERVALS = {
     UPDATE_COORDINATOR_FW: datetime.timedelta(minutes=60),
     UPDATE_COORDINATOR_STAT: datetime.timedelta(seconds=30),
+    UPDATE_COORDINATOR_INTERNET: datetime.timedelta(seconds=30),
     UPDATE_COORDINATOR_CLIENTS: datetime.timedelta(seconds=30),
     UPDATE_COORDINATOR_RX: datetime.timedelta(seconds=30),
     UPDATE_COORDINATOR_TX: datetime.timedelta(seconds=30)
@@ -83,6 +85,7 @@ class KeeneticRouter:
         update_methods = {
             UPDATE_COORDINATOR_FW: self._get_system_fw,
             UPDATE_COORDINATOR_STAT: self._get_system_stat,
+            UPDATE_COORDINATOR_INTERNET: self._get_internet_status,
             UPDATE_COORDINATOR_CLIENTS: self._get_network_clients,
             UPDATE_COORDINATOR_RX: self._get_network_clients_rx,
             UPDATE_COORDINATOR_TX: self._get_network_clients_tx
@@ -192,6 +195,11 @@ class KeeneticRouter:
         return data
 
 
+    async def _get_internet_status(self) -> dict:
+        """Get Internet status."""
+        return await self._get_data(self.api.get_internet_status)
+
+
     async def _get_network_clients(self, _ = None) -> None:
         """Fetch Network clients general data."""
         data = await self._get_data(self.api.get_network_clients)
@@ -233,10 +241,10 @@ class KeeneticRouter:
                                                register: bool = True) -> None:
         """Register/Unregister Network client."""
         if register:
-            await self._get_data(self.api.register_network_client,
+            await self._get_data(self.api.register_client,
                                  mac=mac, name=name)
         else:
-            await self._get_data(self.api.unregister_network_client,
+            await self._get_data(self.api.unregister_client,
                                  mac=mac)
 
 
@@ -244,10 +252,10 @@ class KeeneticRouter:
                                                     permit: bool = True) -> None:
         """Permit/Deny Network client Internet access."""
         if permit:
-            await self._get_data(self.api.permit_internet_access,
+            await self._get_data(self.api.permit_client_internet_access,
                                  mac=mac)
         else:
-            await self._get_data(self.api.deny_internet_access,
+            await self._get_data(self.api.deny_client_internet_access,
                                  mac=mac)
 
 

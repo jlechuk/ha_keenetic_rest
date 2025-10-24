@@ -105,6 +105,11 @@ class KeeneticAPI:
         return await self._get_data("rci/show/system")
 
 
+    async def get_internet_status(self) -> list | dict:
+        """Get Internet status."""
+        return await self._get_data("rci/show/internet/status")
+
+
     async def get_network_clients(self) -> list | dict:
         """Get connected network clients."""
         return (await self._get_data("rci/show/ip/hotspot"))["host"]
@@ -126,7 +131,7 @@ class KeeneticAPI:
         ))["host"]
 
 
-    async def register_network_client(self, mac: str, name: str) -> list | dict:
+    async def register_client(self, mac: str, name: str) -> list | dict:
         """Register network client."""
         return await self._post_data(
             url="rci/known/host",
@@ -134,7 +139,7 @@ class KeeneticAPI:
         )
 
 
-    async def unregister_network_client(self, mac: str) -> list | dict:
+    async def unregister_client(self, mac: str) -> list | dict:
         """Unregister network client."""
         return await self._post_data(
             url="rci/known/host",
@@ -142,7 +147,7 @@ class KeeneticAPI:
         )
 
 
-    async def permit_internet_access(self, mac: str) -> list | dict:
+    async def permit_client_internet_access(self, mac: str) -> list | dict:
         """Permit network client internaet access."""
         return await self._post_data(
             url="rci/ip/hotspot/host",
@@ -150,7 +155,7 @@ class KeeneticAPI:
         )
 
 
-    async def deny_internet_access(self, mac: str) -> list | dict:
+    async def deny_client_internet_access(self, mac: str) -> list | dict:
         """Deny network client internaet access."""
         return await self._post_data(
             url="rci/ip/hotspot/host",

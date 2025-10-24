@@ -28,19 +28,19 @@ class NetworkClientRegisteredSwitch(
 
     @property
     def is_on(self) -> bool | None:  # noqa: D102
-        if self.client_id in self.coordinator.data:
-            return self.coordinator.\
-                data[self.client_id][self.entity_description.key]
+        data = self._get_coordinator_data()
+        if data:
+            return data[self.entity_description.key]
         return None
 
     async def async_turn_on(self, **kwargs):  # noqa: D102
-        mac = self.coordinator.data[self.client_id]["mac"]
+        mac = self._get_coordinator_data()["mac"]
         name = self.device_info["name"]
         await self.router.change_client_registered_setting(mac=mac, name=name)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):  # noqa: D102
-        mac = self.coordinator.data[self.client_id]["mac"]
+        mac = self._get_coordinator_data()["mac"]
         await self.router.change_client_registered_setting(mac=mac, register=False)
         await self.coordinator.async_request_refresh()
 
@@ -51,9 +51,9 @@ class NetworkClientInternetAccessSwitch(
 
     @property
     def is_on(self) -> bool | None:  # noqa: D102
-        if self.client_id in self.coordinator.data:
-            state = self.coordinator.\
-                data[self.client_id][self.entity_description.key]
+        data = self._get_coordinator_data()
+        if data:
+            state = data[self.entity_description.key]
             if state == "permit":
                 return True
             else:  # noqa: RET505
@@ -61,12 +61,12 @@ class NetworkClientInternetAccessSwitch(
         return None
 
     async def async_turn_on(self, **kwargs):  # noqa: D102
-        mac = self.coordinator.data[self.client_id]["mac"]
+        mac = self._get_coordinator_data()["mac"]
         await self.router.change_client_internet_access_setting(mac=mac)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):  # noqa: D102
-        mac = self.coordinator.data[self.client_id]["mac"]
+        mac = self._get_coordinator_data()["mac"]
         await self.router.change_client_internet_access_setting(mac=mac,
                                                                 permit=False)
         await self.coordinator.async_request_refresh()

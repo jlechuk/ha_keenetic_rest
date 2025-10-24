@@ -46,10 +46,14 @@ NETWORK_CLIENT_BINARY_SENSORS: tuple[NetworkClientBinarySensorDescription, ...] 
         translation_key="active",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         update_coordinator=UPDATE_COORDINATOR_CLIENTS,
-        extra_attributes = [
-            "mac", "ip", "hostname", "name", "interface",
-            "speed", "port", "ssid", "security", "rssi"
-        ]
+        extra_attributes = {"MAC": "mac", "IP": "ip",
+                            "Hostname": "hostname", "Name": "name",
+                            "Interface ID": {"interface": "id"},
+                            "Interface name": {"interface": "name"},
+                            "Interface description": {"interface": "description"},
+                            "Speed": "speed",
+                            "Port": "port", "SSID": "ssid",
+                            "Security": "security", "RSSI": "rssi"}
     ),
 )
 
