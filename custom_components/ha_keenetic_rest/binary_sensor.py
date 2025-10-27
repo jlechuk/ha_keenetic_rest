@@ -16,10 +16,22 @@ from .const import (
     DOMAIN,
     SIGNAL_NEW_NETWORK_CLIENTS,
     UPDATE_COORDINATOR_CLIENTS,
+    UPDATE_COORDINATOR_WAN_STATUS,
     BaseKeeneticEntityDescription,
 )
-from .entity import BaseKeeneticNetworkClientEntity, add_network_client_entities
+from .entity import (
+    BaseKeeneticNetworkClientEntity,
+    BaseKeeneticRouterEntity,
+    add_network_client_entities,
+)
 from .router import KeeneticRouter
+
+
+class RouterBinarySensor(BaseKeeneticRouterEntity, BinarySensorEntity):
+    """Router binary sensor."""
+    @property
+    def is_on(self) -> bool | None:  # noqa: D102
+        return self._get_coordinator_data()[self.entity_description.key]
 
 
 class NetworkClientBinarySensor(
@@ -27,10 +39,14 @@ class NetworkClientBinarySensor(
     """Network client binary sensor."""
     @property
     def is_on(self) -> bool | None:  # noqa: D102
-        if self.client_id in self.coordinator.data:
-            return self.coordinator.\
-                data[self.client_id][self.entity_description.key]
-        return None
+        return self._get_coordinator_data()[self.entity_description.key]
+
+
+@dataclass
+class RouterBinarySensorDescription(
+    BaseKeeneticEntityDescription, BinarySensorEntityDescription):
+    """Router binary sensor description."""
+    entity_class = RouterBinarySensor
 
 
 @dataclass
@@ -39,6 +55,18 @@ class NetworkClientBinarySensorDescription(
     """Network client binary sensor description."""
     entity_class = NetworkClientBinarySensor
 
+
+ROUTER_BINARY_SENSORS: tuple[RouterBinarySensor, ...] = (
+    RouterBinarySensorDescription(
+        key="internet",
+        translation_key="wan_status",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        update_coordinator=UPDATE_COORDINATOR_WAN_STATUS,
+        extra_attributes={"Enabled": "enabled",
+                          "Interface": {"gateway": "interface"},
+                          "IP address": {"gateway": "address"}}
+    ),
+)
 
 NETWORK_CLIENT_BINARY_SENSORS: tuple[NetworkClientBinarySensorDescription, ...] = (
     NetworkClientBinarySensorDescription(
@@ -65,6 +93,15 @@ async def async_setup_entry(
 ) -> None:
     """Add Router and Network clients binary sensors."""
     router: KeeneticRouter = hass.data[DOMAIN][config_entry.entry_id]
+
+    # Add Router binary sensors
+    router_sensors = [
+        description.entity_class(
+            router, description
+        ) for description in ROUTER_BINARY_SENSORS
+    ]
+    async_add_entities(router_sensors)
+
 
     # Add current Network clients binary sensors
     add_network_client_entities(router, router.tracked_network_client_ids,

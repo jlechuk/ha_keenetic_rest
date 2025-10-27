@@ -10,6 +10,9 @@
             "uptime": {
                 "default": "mdi:timer-outline"
             },
+            "wan_rx_speed": {
+                "default": "mdi:speedometer"
+            },
             "rxspeed": {
                 "default": "mdi:speedometer"
             },

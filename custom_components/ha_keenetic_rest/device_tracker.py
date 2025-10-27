@@ -26,19 +26,19 @@ class NetworkClientScanner(BaseKeeneticNetworkClientEntity, ScannerEntity):
 
     @property
     def is_connected(self) -> bool:  # noqa: D102
-        return self._get_coordinator_data()["active"]
+        return self._get_coordinator_data().get("active")
 
     @property
     def hostname(self) -> str | None:  # noqa: D102
-        return self._get_coordinator_data()["hostname"]
+        return self._get_coordinator_data().get("hostname")
 
     @property
     def ip_address(self) -> str | None:  # noqa: D102
-        return self._get_coordinator_data()["ip"]
+        return self._get_coordinator_data().get("ip")
 
     @property
     def mac_address(self) -> str:  # noqa: D102
-        return self._get_coordinator_data()["mac"]
+        return self._get_coordinator_data().get("mac")
 
 
 @dataclass

@@ -20,6 +20,7 @@ from .const import (
     UPDATE_COORDINATOR_RX,
     UPDATE_COORDINATOR_STAT,
     UPDATE_COORDINATOR_TX,
+    UPDATE_COORDINATOR_WAN_SPEED,
     BaseKeeneticEntityDescription,
 )
 from .entity import (
@@ -32,19 +33,10 @@ from .router import KeeneticRouter
 
 class RouterSensor(BaseKeeneticRouterEntity, SensorEntity):
     """Router sensor."""
-    @property
-    def native_value(self) -> float | int | str | None:  # noqa: D102
-        return self._get_coordinator_data()[self.entity_description.key]
 
 
 class NetworkClientSensor(BaseKeeneticNetworkClientEntity, SensorEntity):
     """Network client sensor."""
-    @property
-    def native_value(self) ->float | int | str | None:  # noqa: D102
-        data = self._get_coordinator_data()
-        if data:
-            return data[self.entity_description.key]
-        return None
 
 
 @dataclass
@@ -88,6 +80,15 @@ ROUTER_SENSORS: tuple[RouterSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.SECONDS,
         suggested_display_precision=0,
         update_coordinator = UPDATE_COORDINATOR_STAT
+    ),
+    RouterSensorDescription(
+        key="rxspeed",
+        translation_key="wan_rx_speed",
+        device_class=SensorDeviceClass.DATA_RATE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfDataRate.BITS_PER_SECOND,
+        suggested_display_precision=0,
+        update_coordinator=UPDATE_COORDINATOR_WAN_SPEED
     )
 )
 
@@ -122,12 +123,12 @@ async def async_setup_entry(
     router: KeeneticRouter = hass.data[DOMAIN][config_entry.entry_id]
 
     # Add Router sensors
-    keenetic_sensors = [
+    router_sensors = [
         description.entity_class(
             router, description
         ) for description in ROUTER_SENSORS
     ]
-    async_add_entities(keenetic_sensors)
+    async_add_entities(router_sensors)
 
     # Add current Network clients sensors
     add_network_client_entities(router, router.tracked_network_client_ids,

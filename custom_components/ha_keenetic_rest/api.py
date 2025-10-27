@@ -110,25 +110,41 @@ class KeeneticAPI:
         return await self._get_data("rci/show/internet/status")
 
 
+    async def get_interface_speed(self, name: str, direction: str,
+                                  detail: int = 1) -> list | dict:
+        """Get interface speed.
+
+        Args:
+            name: interface name
+            direction: "rxspeed", "txspeed".
+            detail: 0 - 1s, 1 - 2s, 2 - 3s, 3 - 5s.
+        """
+        return await self._get_data(
+            url="rci/show/interface/rrd",
+            params={"name": name, "attribute": direction, "detail": detail}
+        )
+
+
     async def get_network_clients(self) -> list | dict:
         """Get connected network clients."""
-        return (await self._get_data("rci/show/ip/hotspot"))["host"]
+        data = (await self._get_data("rci/show/ip/hotspot"))["host"]
+        return {el["mac"].lower(): el for el in data if "mac" in el}
 
 
-    async def get_clients_rx_speed(self) -> list | dict:
-        """Get network clients RX speed."""
-        return (await self._get_data(
+    async def get_clients_speed(self, direction: str,
+                                detail: int = 0) -> list:
+        """Get network clients speed.
+
+        Args:
+            direction: "rxspeed", "txspeed"
+            detail: 0 - 3s, 1 - 60s, 2 - 180s, 3 - 1440s
+        """
+        data = (await self._get_data(
             url="rci/show/ip/hotspot/summary",
-            params={'attribute': "rxspeed", "detail": 0}
+            params={'attribute': direction, "detail": detail}
         ))["host"]
 
-
-    async def get_clients_tx_speed(self) -> list | dict:
-        """Get network clients TX speed."""
-        return (await self._get_data(
-            url="rci/show/ip/hotspot/summary",
-            params={'attribute': "txspeed", "detail": 0}
-        ))["host"]
+        return {el["mac"].lower(): el for el in data if "mac" in el}
 
 
     async def register_client(self, mac: str, name: str) -> list | dict:

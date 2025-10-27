@@ -28,10 +28,7 @@ class NetworkClientRegisteredSwitch(
 
     @property
     def is_on(self) -> bool | None:  # noqa: D102
-        data = self._get_coordinator_data()
-        if data:
-            return data[self.entity_description.key]
-        return None
+        return self._get_coordinator_data().get(self.entity_description.key)
 
     async def async_turn_on(self, **kwargs):  # noqa: D102
         mac = self._get_coordinator_data()["mac"]
@@ -73,7 +70,7 @@ class NetworkClientInternetAccessSwitch(
 
     @property
     def available(self) -> bool:  # noqa: D102
-        return super().available\
+        return super().available \
               and self.router.is_client_registered(self.client_id)
 
 

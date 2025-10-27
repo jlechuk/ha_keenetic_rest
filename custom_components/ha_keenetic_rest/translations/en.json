@@ -36,6 +36,9 @@
             "uptime": {
                 "name": "Uptime"
             },
+            "wan_rx_speed": {
+                "name": "WAN RX speed"
+            },
             "rxspeed": {
                 "name": "RX speed"
             },
@@ -46,6 +49,9 @@
         "binary_sensor": {
             "active": {
                 "name": "Status"
+            },
+            "wan_status": {
+                "name": "WAN"
             }
         },
         "switch": {

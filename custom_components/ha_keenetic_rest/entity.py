@@ -29,6 +29,10 @@ class BaseKeeneticEntity(CoordinatorEntity):
         self.entity_description = entity_description
 
     @property
+    def native_value(self) -> float | int | str | None:  # noqa: D102
+        return self._get_coordinator_data().get(self.entity_description.key)
+
+    @property
     def available(self) -> bool:  # noqa: D102
         return super().available
 
