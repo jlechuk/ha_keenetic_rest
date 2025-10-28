@@ -17,10 +17,11 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import (
     DOMAIN,
     SIGNAL_NEW_NETWORK_CLIENTS,
-    UPDATE_COORDINATOR_RX,
+    UPDATE_COORDINATOR_CLIENTS_RX_SPEED,
+    UPDATE_COORDINATOR_CLIENTS_TX_SPEED,
     UPDATE_COORDINATOR_STAT,
-    UPDATE_COORDINATOR_TX,
-    UPDATE_COORDINATOR_WAN_SPEED,
+    UPDATE_COORDINATOR_WAN_RX_SPEED,
+    UPDATE_COORDINATOR_WAN_TX_SPEED,
     BaseKeeneticEntityDescription,
 )
 from .entity import (
@@ -88,7 +89,16 @@ ROUTER_SENSORS: tuple[RouterSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfDataRate.BITS_PER_SECOND,
         suggested_display_precision=0,
-        update_coordinator=UPDATE_COORDINATOR_WAN_SPEED
+        update_coordinator=UPDATE_COORDINATOR_WAN_RX_SPEED
+    ),
+        RouterSensorDescription(
+        key="txspeed",
+        translation_key="wan_tx_speed",
+        device_class=SensorDeviceClass.DATA_RATE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfDataRate.BITS_PER_SECOND,
+        suggested_display_precision=0,
+        update_coordinator=UPDATE_COORDINATOR_WAN_TX_SPEED
     )
 )
 
@@ -100,7 +110,7 @@ NETWORK_CLIENT_SENSORS: tuple[NetworkClientSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfDataRate.BITS_PER_SECOND,
         suggested_display_precision=0,
-        update_coordinator=UPDATE_COORDINATOR_RX
+        update_coordinator=UPDATE_COORDINATOR_CLIENTS_RX_SPEED
     ),
     NetworkClientSensorDescription(
         key="txspeed",
@@ -109,7 +119,7 @@ NETWORK_CLIENT_SENSORS: tuple[NetworkClientSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfDataRate.BITS_PER_SECOND,
         suggested_display_precision=0,
-        update_coordinator=UPDATE_COORDINATOR_TX
+        update_coordinator=UPDATE_COORDINATOR_CLIENTS_TX_SPEED
     )
 )
 

@@ -28,12 +28,13 @@ from .const import (
     PROTOCOL_HTTP,
     SIGNAL_NEW_NETWORK_CLIENTS,
     UPDATE_COORDINATOR_CLIENTS,
+    UPDATE_COORDINATOR_CLIENTS_RX_SPEED,
+    UPDATE_COORDINATOR_CLIENTS_TX_SPEED,
     UPDATE_COORDINATOR_FW,
-    UPDATE_COORDINATOR_RX,
     UPDATE_COORDINATOR_STAT,
-    UPDATE_COORDINATOR_TX,
-    UPDATE_COORDINATOR_WAN_SPEED,
+    UPDATE_COORDINATOR_WAN_RX_SPEED,
     UPDATE_COORDINATOR_WAN_STATUS,
+    UPDATE_COORDINATOR_WAN_TX_SPEED,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,10 +44,11 @@ UPDATE_INTERVALS = {
     UPDATE_COORDINATOR_FW: datetime.timedelta(minutes=60),
     UPDATE_COORDINATOR_STAT: datetime.timedelta(seconds=30),
     UPDATE_COORDINATOR_WAN_STATUS: datetime.timedelta(seconds=30),
-    UPDATE_COORDINATOR_WAN_SPEED: datetime.timedelta(seconds=30),
+    UPDATE_COORDINATOR_WAN_RX_SPEED: datetime.timedelta(seconds=30),
+    UPDATE_COORDINATOR_WAN_TX_SPEED: datetime.timedelta(seconds=30),
     UPDATE_COORDINATOR_CLIENTS: datetime.timedelta(seconds=30),
-    UPDATE_COORDINATOR_RX: datetime.timedelta(seconds=30),
-    UPDATE_COORDINATOR_TX: datetime.timedelta(seconds=30)
+    UPDATE_COORDINATOR_CLIENTS_RX_SPEED: datetime.timedelta(seconds=30),
+    UPDATE_COORDINATOR_CLIENTS_TX_SPEED: datetime.timedelta(seconds=30)
 }
 
 
@@ -90,8 +92,8 @@ class KeeneticRouter:
             UPDATE_COORDINATOR_WAN_STATUS: partial(self._fetch_data, self.api.get_internet_status),
             UPDATE_COORDINATOR_CLIENTS: partial(self._fetch_data, self.api.get_network_clients),
             UPDATE_COORDINATOR_STAT: self._get_system_stat,
-            UPDATE_COORDINATOR_RX: self._get_network_clients_rx,
-            UPDATE_COORDINATOR_TX: self._get_network_clients_tx
+            UPDATE_COORDINATOR_CLIENTS_RX_SPEED: self._get_network_clients_rx,
+            UPDATE_COORDINATOR_CLIENTS_TX_SPEED: self._get_network_clients_tx
         }
 
         for coordinator_type, method in update_methods.items():
@@ -109,16 +111,22 @@ class KeeneticRouter:
             self.update_coordinators[UPDATE_COORDINATOR_WAN_STATUS].\
                 data.get("gateway", {}).get("interface")
 
-        if wan_interface_name:
-            self.update_coordinators[UPDATE_COORDINATOR_WAN_SPEED] = \
+        wan_speed_methods = {
+            UPDATE_COORDINATOR_WAN_RX_SPEED: partial(self._get_interface_rx,
+                                                     name=wan_interface_name),
+            UPDATE_COORDINATOR_WAN_TX_SPEED: partial(self._get_interface_tx,
+                                                     name=wan_interface_name),
+        }
+
+        for coordinator_type, method in wan_speed_methods.items():
+            self.update_coordinators[coordinator_type] = \
                 DataUpdateCoordinator(
                     self.hass, _LOGGER,
-                    name=f"{UPDATE_COORDINATOR_WAN_SPEED}",
-                    update_method=partial(self._get_interface_rx,
-                                          name=wan_interface_name),
-                    update_interval=UPDATE_INTERVALS[UPDATE_COORDINATOR_WAN_SPEED]
+                    name=f"{coordinator_type}",
+                    update_method=method,
+                    update_interval=UPDATE_INTERVALS[coordinator_type]
                 )
-            await self.update_coordinators[UPDATE_COORDINATOR_WAN_SPEED].\
+            await self.update_coordinators[coordinator_type].\
                 async_config_entry_first_refresh()
 
         # Signaling
@@ -211,10 +219,17 @@ class KeeneticRouter:
 
 
     async def _get_interface_rx(self, name: str) -> dict:
-        """Get Router interface speed."""
+        """Get Router interface RX speed."""
         data = await self._fetch_data(partial(self.api.get_interface_speed,
                                               name=name, direction="rxspeed"))
         return {"rxspeed": data["data"][0]["v"]}
+
+
+    async def _get_interface_tx(self, name: str) -> dict:
+        """Get Router interface TX speed."""
+        data = await self._fetch_data(partial(self.api.get_interface_speed,
+                                              name=name, direction="txspeed"))
+        return {"txspeed": data["data"][0]["v"]}
 
 
     async def _get_network_clients_rx(self) -> dict:

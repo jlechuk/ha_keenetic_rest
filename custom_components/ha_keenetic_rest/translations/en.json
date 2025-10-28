@@ -39,6 +39,9 @@
             "wan_rx_speed": {
                 "name": "WAN RX speed"
             },
+            "wan_tx_speed": {
+                "name": "WAN TX speed"
+            },
             "rxspeed": {
                 "name": "RX speed"
             },

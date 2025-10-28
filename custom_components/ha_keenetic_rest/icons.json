@@ -13,6 +13,9 @@
             "wan_rx_speed": {
                 "default": "mdi:speedometer"
             },
+            "wan_tx_speed": {
+                "default": "mdi:speedometer"
+            },
             "rxspeed": {
                 "default": "mdi:speedometer"
             },
