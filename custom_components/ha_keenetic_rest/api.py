@@ -117,7 +117,7 @@ class KeeneticAPI:
         Args:
             name: interface name
             direction: "rxspeed", "txspeed".
-            detail: 0 - 1s, 1 - 2s, 2 - 3s, 3 - 5s.
+            detail: 0 - 3s, 1 - 60s, 2 - 180s, 3 - 1440s
         """
         return await self._get_data(
             url="rci/show/interface/rrd",
@@ -147,24 +147,20 @@ class KeeneticAPI:
         return {el["mac"].lower(): el for el in data if "mac" in el}
 
 
-    async def register_client(self, mac: str, name: str) -> list | dict:
-        """Register network client."""
-        return await self._post_data(
-            url="rci/known/host",
-            params={"name": name, "mac": mac}
-        )
+    async def set_client_registered_setting(self, register: bool, mac: str,
+                                            name: str | None = None) -> list | dict:
+        """Register/Uregister network client."""
+        params = {"mac": mac}
+        if register:
+            params["name"] = name
+        else:
+            params["no"] = True
 
-
-    async def unregister_client(self, mac: str) -> list | dict:
-        """Unregister network client."""
-        return await self._post_data(
-            url="rci/known/host",
-            params={"mac": mac, "no": True}
-        )
+        return await self._post_data(url="rci/known/host", params=params)
 
 
     async def permit_client_internet_access(self, mac: str) -> list | dict:
-        """Permit network client internaet access."""
+        """Permit network client internet access."""
         return await self._post_data(
             url="rci/ip/hotspot/host",
             params={"mac": mac, "access": "permit"}

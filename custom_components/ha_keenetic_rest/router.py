@@ -234,14 +234,14 @@ class KeeneticRouter:
 
     async def _get_network_clients_rx(self) -> dict:
         """Fetch Network clients RX speed."""
-        return await self._fetch_data(partial(self.api.get_clients_speed,
-                                              direction="rxspeed"))
+        return await self._fetch_data(self.api.get_clients_speed,
+                                      direction="rxspeed")
 
 
     async def _get_network_clients_tx(self) -> dict:
         """Fetch Network clients RX speed."""
-        return await self._fetch_data(partial(self.api.get_clients_speed,
-                                              direction="txspeed"))
+        return await self._fetch_data(self.api.get_clients_speed,
+                                      direction="txspeed")
 
 
     async def change_client_registered_setting(self, mac: str,
@@ -249,11 +249,11 @@ class KeeneticRouter:
                                                register: bool = True) -> None:
         """Register/Unregister Network client."""
         if register:
-            await self._fetch_data(self.api.register_client,
-                                 mac=mac, name=name)
+            await self._fetch_data(self.api.set_client_registered_setting,
+                                   register=True, mac=mac, name=name)
         else:
-            await self._fetch_data(self.api.unregister_client,
-                                 mac=mac)
+            await self._fetch_data(self.api.set_client_registered_setting,
+                                   register=False, mac=mac)
 
 
     async def change_client_internet_access_setting(self, mac: str,
