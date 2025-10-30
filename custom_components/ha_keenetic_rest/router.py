@@ -314,7 +314,7 @@ class KeeneticRouter:
             client_name = client_data["name"]
 
         return DeviceInfo(
-            identifiers={(DOMAIN, f"{self.unique_id}-{client_id}")},
+            identifiers={(DOMAIN, self.unique_id, "network_client", client_id)},
             name=client_name,
             via_device=self.device_identifier
         )
