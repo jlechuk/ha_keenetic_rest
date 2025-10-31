@@ -18,7 +18,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -86,7 +86,7 @@ class KeeneticRouter:
         """Create update coordinators to fetch data using Keenetic api."""
         await self._auth()
 
-        # Create update coordinators
+        # General update coordinators
         update_methods = {
             UPDATE_COORDINATOR_FW: partial(self._fetch_data, self.api.get_system_fw),
             UPDATE_COORDINATOR_WAN_STATUS: partial(self._fetch_data, self.api.get_internet_status),
@@ -106,7 +106,11 @@ class KeeneticRouter:
             await self.update_coordinators[coordinator_type].\
                 async_config_entry_first_refresh()
 
-        # Internet speed
+        self.tracked_network_client_ids = list(
+            self.get_network_clients_data().keys()
+        )
+
+        # WAN speed
         wan_interface_name = \
             self.update_coordinators[UPDATE_COORDINATOR_WAN_STATUS].\
                 data.get("gateway", {}).get("interface")
@@ -129,25 +133,11 @@ class KeeneticRouter:
             await self.update_coordinators[coordinator_type].\
                 async_config_entry_first_refresh()
 
-        # Signaling
-        self.tracked_network_client_ids = list(
-            self.get_network_clients_data().keys()
-        )
-
-        ## New network clients signaling
-        @callback
-        def _new_clients_listener() -> None:
-            current_client_ids = set(self.get_network_clients_data().keys())
-            new_clients_ids = current_client_ids.\
-                difference(self.tracked_network_client_ids)
-            self.tracked_network_client_ids.extend(new_clients_ids)
-
-            if new_clients_ids:
-                async_dispatcher_send(self.hass, SIGNAL_NEW_NETWORK_CLIENTS, new_clients_ids)
-
+        # Add coordinators' listeners
+        ## Network clients listener
         self.config_entry.async_on_unload(
             self.update_coordinators[UPDATE_COORDINATOR_CLIENTS].\
-                async_add_listener(_new_clients_listener)
+                async_add_listener(self._network_clients_listener)
         )
 
         self.config_entry.async_on_unload(self.close)
@@ -244,27 +234,52 @@ class KeeneticRouter:
                                       direction="txspeed")
 
 
-    async def change_client_registered_setting(self, mac: str,
-                                               name: str | None = None,
-                                               register: bool = True) -> None:
+    async def change_client_registered_setting(self, register: bool, mac: str,
+                                               name: str | None = None) -> None:
         """Register/Unregister Network client."""
-        if register:
-            await self._fetch_data(self.api.set_client_registered_setting,
-                                   register=True, mac=mac, name=name)
-        else:
-            await self._fetch_data(self.api.set_client_registered_setting,
-                                   register=False, mac=mac)
+        await self._fetch_data(
+            self.api.set_client_registered_setting,
+            register=register,
+            mac=mac,
+            name=name
+        )
 
 
-    async def change_client_internet_access_setting(self, mac: str,
-                                                    permit: bool = True) -> None:
+    async def change_client_internet_access_setting(self, permit: bool,
+                                                    mac: str) -> None:
         """Permit/Deny Network client Internet access."""
-        if permit:
-            await self._fetch_data(self.api.permit_client_internet_access,
-                                 mac=mac)
-        else:
-            await self._fetch_data(self.api.deny_client_internet_access,
-                                 mac=mac)
+        await self._fetch_data(
+            self.api.set_client_internet_access_setting,
+            permit=permit,
+            mac=mac
+        )
+
+
+    @callback
+    def _network_clients_listener(self) -> None:
+        data = self.get_network_clients_data()
+
+        # New Network client signaling
+        current_client_ids = set(data.keys())
+        new_clients_ids = current_client_ids.\
+            difference(self.tracked_network_client_ids)
+        self.tracked_network_client_ids.extend(new_clients_ids)
+
+        if new_clients_ids:
+            async_dispatcher_send(
+                self.hass, SIGNAL_NEW_NETWORK_CLIENTS, new_clients_ids)
+
+        device_registry = dr.async_get(self.hass)
+
+        # Update Network client device name
+        for client_id in data:
+            device = device_registry.async_get_device(
+                identifiers={self._make_client_device_identifier(client_id)})
+            if device and device.name != self._make_client_device_name(client_id):
+                device_registry.async_update_device(
+                    device_id=device.id,
+                    name=self._make_client_device_name(client_id)
+                )
 
 
     def get_network_clients_data(self) -> dict:
@@ -284,28 +299,31 @@ class KeeneticRouter:
 
 
     @property
-    def device_identifier(self) -> tuple:
+    def _router_device_identifier(self) -> tuple:
         """Keenetic router identifier for DeviceInfo."""
         return (DOMAIN, self.unique_id)
 
 
     @property
-    def device_info(self) -> DeviceInfo:
+    def router_device_info(self) -> dr.DeviceInfo:
         """Return Keenetic router DeviceInfo."""
         fw_data = self.update_coordinators[UPDATE_COORDINATOR_FW].data
-        return DeviceInfo(
-            identifiers={self.device_identifier},
+        return dr.DeviceInfo(
+            identifiers={self._router_device_identifier},
             manufacturer=fw_data["manufacturer"],
             model=fw_data["model"],
             sw_version=fw_data["title"],
             hw_version=fw_data["hw_version"],
             serial_number=self.config_entry.data["serial"],
-            name=f"{self.config_entry.data[CONF_NAME]}"
+            name=f"{self.config_entry.data[CONF_NAME]} Router"
         )
 
 
-    def get_network_client_device_info(self, client_id) -> DeviceInfo:
-        """Return Network client DeviceInfo."""
+    def _make_client_device_identifier(self, client_id) -> tuple:
+        return (DOMAIN, self.unique_id, "network_client", client_id)
+
+
+    def _make_client_device_name(self, client_id) -> str:
         client_data = self.get_network_clients_data()[client_id]
         client_name = client_data["mac"]
         if client_data["hostname"]:
@@ -313,8 +331,13 @@ class KeeneticRouter:
         if client_data["name"]:
             client_name = client_data["name"]
 
-        return DeviceInfo(
-            identifiers={(DOMAIN, self.unique_id, "network_client", client_id)},
-            name=client_name,
-            via_device=self.device_identifier
+        return client_name
+
+
+    def make_client_device_info(self, client_id) -> dr.DeviceInfo:
+        """Return Network client DeviceInfo."""
+        return dr.DeviceInfo(
+            identifiers={self._make_client_device_identifier(client_id)},
+            name=self._make_client_device_name(client_id),
+            via_device=self._router_device_identifier
         )

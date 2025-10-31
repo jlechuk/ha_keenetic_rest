@@ -78,7 +78,7 @@ class BaseKeeneticRouterEntity(BaseKeeneticEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Router device info."""
-        return self.router.device_info
+        return self.router.router_device_info
 
     def _get_coordinator_data(self):
         return self.coordinator.data
@@ -104,7 +104,7 @@ class BaseKeeneticNetworkClientEntity(BaseKeeneticEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Network client device info."""
-        return self.router.get_network_client_device_info(self.client_id)
+        return self.router.make_client_device_info(self.client_id)
 
     def _get_coordinator_data(self):
         return self.coordinator.data.get(self.client_id, None)

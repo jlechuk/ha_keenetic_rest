@@ -33,12 +33,14 @@ class NetworkClientRegisteredSwitch(
     async def async_turn_on(self, **kwargs):  # noqa: D102
         mac = self._get_coordinator_data()["mac"]
         name = self.device_info["name"]
-        await self.router.change_client_registered_setting(mac=mac, name=name)
+        await self.router.change_client_registered_setting(
+            register=True, mac=mac, name=name)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):  # noqa: D102
         mac = self._get_coordinator_data()["mac"]
-        await self.router.change_client_registered_setting(mac=mac, register=False)
+        await self.router.change_client_registered_setting(
+            register=False, mac=mac)
         await self.coordinator.async_request_refresh()
 
 
@@ -59,13 +61,14 @@ class NetworkClientInternetAccessSwitch(
 
     async def async_turn_on(self, **kwargs):  # noqa: D102
         mac = self._get_coordinator_data()["mac"]
-        await self.router.change_client_internet_access_setting(mac=mac)
+        await self.router.change_client_internet_access_setting(
+            permit=True, mac=mac)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):  # noqa: D102
         mac = self._get_coordinator_data()["mac"]
-        await self.router.change_client_internet_access_setting(mac=mac,
-                                                                permit=False)
+        await self.router.change_client_internet_access_setting(
+            permit=False, mac=mac)
         await self.coordinator.async_request_refresh()
 
     @property

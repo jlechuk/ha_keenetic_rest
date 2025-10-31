@@ -92,7 +92,7 @@ class KeenticConfigFlow(ConfigFlow, domain=DOMAIN):  # noqa: D101
 
                 user_input["serial"] = serial
                 return self.async_create_entry(
-                    title="Keenetic Router",
+                    title=user_input[CONF_NAME],
                     data=user_input
                 )
 
