@@ -1,6 +1,7 @@
 # noqa: D100
 
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -19,9 +20,8 @@ from .const import (
     SIGNAL_NEW_NETWORK_CLIENTS,
     UPDATE_COORDINATOR_CLIENTS_RX_SPEED,
     UPDATE_COORDINATOR_CLIENTS_TX_SPEED,
-    UPDATE_COORDINATOR_STAT,
-    UPDATE_COORDINATOR_WAN_RX_SPEED,
-    UPDATE_COORDINATOR_WAN_TX_SPEED,
+    UPDATE_COORDINATOR_IF_STATS,
+    UPDATE_COORDINATOR_SYS_STATS,
     BaseKeeneticEntityDescription,
 )
 from .entity import (
@@ -36,8 +36,19 @@ class RouterSensor(BaseKeeneticRouterEntity, SensorEntity):
     """Router sensor."""
 
 
-class NetworkClientSensor(BaseKeeneticNetworkClientEntity, SensorEntity):
+class RouterWANSpeedSensor(RouterSensor):
+    """Router WAN speed sensor."""
+    def _get_coordinator_data(self) -> Any:
+        if self.router.wan_interface_name:
+            return super()._get_coordinator_data().\
+                get(self.router.wan_interface_name)
+        return {}
+
+
+class NetworkClientSpeedSensor(BaseKeeneticNetworkClientEntity, SensorEntity):
     """Network client sensor."""
+    def _get_attributes_data(self):
+        return self.router.get_network_clients_data().get(self.client_id)
 
 
 @dataclass
@@ -51,7 +62,7 @@ class RouterSensorDescription(
 class NetworkClientSensorDescription(
     BaseKeeneticEntityDescription, SensorEntityDescription):
     """Network client sensor description."""
-    entity_class = NetworkClientSensor
+    entity_class = None
 
 
 ROUTER_SENSORS: tuple[RouterSensorDescription, ...] = (
@@ -61,7 +72,7 @@ ROUTER_SENSORS: tuple[RouterSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER_FACTOR,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
-        update_coordinator = UPDATE_COORDINATOR_STAT
+        update_coordinator = UPDATE_COORDINATOR_SYS_STATS
     ),
     RouterSensorDescription(
         key="memory_usage",
@@ -69,7 +80,7 @@ ROUTER_SENSORS: tuple[RouterSensorDescription, ...] = (
         device_class=SensorDeviceClass.POWER_FACTOR,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=PERCENTAGE,
-        update_coordinator = UPDATE_COORDINATOR_STAT,
+        update_coordinator = UPDATE_COORDINATOR_SYS_STATS,
         extra_attributes = {"Memory free": "memfree",
                             "Memory total": "memtotal"}
     ),
@@ -80,7 +91,7 @@ ROUTER_SENSORS: tuple[RouterSensorDescription, ...] = (
         state_class=None,
         native_unit_of_measurement=UnitOfTime.SECONDS,
         suggested_display_precision=0,
-        update_coordinator = UPDATE_COORDINATOR_STAT
+        update_coordinator = UPDATE_COORDINATOR_SYS_STATS
     ),
     RouterSensorDescription(
         key="rxspeed",
@@ -88,8 +99,10 @@ ROUTER_SENSORS: tuple[RouterSensorDescription, ...] = (
         device_class=SensorDeviceClass.DATA_RATE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfDataRate.BITS_PER_SECOND,
+        suggested_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
         suggested_display_precision=0,
-        update_coordinator=UPDATE_COORDINATOR_WAN_RX_SPEED
+        update_coordinator=UPDATE_COORDINATOR_IF_STATS,
+        entity_class=RouterWANSpeedSensor
     ),
         RouterSensorDescription(
         key="txspeed",
@@ -97,8 +110,10 @@ ROUTER_SENSORS: tuple[RouterSensorDescription, ...] = (
         device_class=SensorDeviceClass.DATA_RATE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfDataRate.BITS_PER_SECOND,
+        suggested_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
         suggested_display_precision=0,
-        update_coordinator=UPDATE_COORDINATOR_WAN_TX_SPEED
+        update_coordinator=UPDATE_COORDINATOR_IF_STATS,
+        entity_class=RouterWANSpeedSensor
     )
 )
 
@@ -109,8 +124,12 @@ NETWORK_CLIENT_SENSORS: tuple[NetworkClientSensorDescription, ...] = (
         device_class=SensorDeviceClass.DATA_RATE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfDataRate.BITS_PER_SECOND,
+        suggested_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
         suggested_display_precision=0,
-        update_coordinator=UPDATE_COORDINATOR_CLIENTS_RX_SPEED
+        update_coordinator=UPDATE_COORDINATOR_CLIENTS_RX_SPEED,
+        entity_class=NetworkClientSpeedSensor,
+        extra_attributes = {"Interface ID": {"interface": "id"},
+                            "Interface name": {"interface": "name"}}
     ),
     NetworkClientSensorDescription(
         key="txspeed",
@@ -118,8 +137,12 @@ NETWORK_CLIENT_SENSORS: tuple[NetworkClientSensorDescription, ...] = (
         device_class=SensorDeviceClass.DATA_RATE,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfDataRate.BITS_PER_SECOND,
+        suggested_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
         suggested_display_precision=0,
-        update_coordinator=UPDATE_COORDINATOR_CLIENTS_TX_SPEED
+        update_coordinator=UPDATE_COORDINATOR_CLIENTS_TX_SPEED,
+        entity_class=NetworkClientSpeedSensor,
+        extra_attributes = {"Interface ID": {"interface": "id"},
+                            "Interface name": {"interface": "name"}}
     )
 )
 

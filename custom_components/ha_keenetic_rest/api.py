@@ -100,7 +100,7 @@ class KeeneticAPI:
         return await self._get_data("rci/show/version")
 
 
-    async def get_system_stat(self) -> list | dict:
+    async def get_system_stats(self) -> list | dict:
         """Get system statistics."""
         return await self._get_data("rci/show/system")
 
@@ -108,6 +108,14 @@ class KeeneticAPI:
     async def get_internet_status(self) -> list | dict:
         """Get Internet status."""
         return await self._get_data("rci/show/internet/status")
+
+
+    async def get_interface_stats(self, name: str) -> list | dict:
+        """Get interface statistics."""
+        return await self._get_data(
+            url="rci/show/interface/stat",
+            params={"name": name}
+        )
 
 
     async def get_interface_speed(self, name: str, direction: str,

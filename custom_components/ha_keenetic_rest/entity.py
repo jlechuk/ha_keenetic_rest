@@ -40,24 +40,28 @@ class BaseKeeneticEntity(CoordinatorEntity):
     def extra_state_attributes(self) -> dict:  # noqa: D102
         attributes = {}
         attr_description = self.entity_description.extra_attributes
-        data = self._get_coordinator_data()
+        data = self._get_attributes_data()
         if attr_description and data:
             for attr_name, attr_key in attr_description.items():
-                attributes[attr_name] = self._get_attribute_value(attr_key, data)
+                attributes[attr_name] = \
+                    self._extract_attribute_value(attr_key, data)
         return attributes
 
     def _get_coordinator_data(self) -> Any:
         raise NotImplementedError
 
+    def _get_attributes_data(self) -> Any:
+        return self._get_coordinator_data()
+
     @staticmethod
-    def _get_attribute_value(attr_key: dict | str, data: dict) -> Any:
+    def _extract_attribute_value(attr_key: dict | str, data: dict) -> Any:
         if data is None:
             return None
 
         if type(attr_key) is dict:
             key = next(iter(attr_key))
-            return BaseKeeneticEntity._get_attribute_value(attr_key[key],
-                                                           data.get(key))
+            return BaseKeeneticEntity._extract_attribute_value(attr_key[key],
+                                                               data.get(key))
         elif type(attr_key) is str:  # noqa: RET505
             return data.get(attr_key)
         else:
@@ -107,7 +111,7 @@ class BaseKeeneticNetworkClientEntity(BaseKeeneticEntity):
         return self.router.make_client_device_info(self.client_id)
 
     def _get_coordinator_data(self):
-        return self.coordinator.data.get(self.client_id, None)
+        return self.coordinator.data.get(self.client_id)
 
 
 @callback

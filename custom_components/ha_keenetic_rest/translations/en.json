@@ -53,8 +53,8 @@
             "active": {
                 "name": "Status"
             },
-            "wan_status": {
-                "name": "WAN"
+            "router_internet_status": {
+                "name": "Internet"
             }
         },
         "switch": {

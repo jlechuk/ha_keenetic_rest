@@ -1,5 +1,6 @@
 """Setup Keentic router."""
 
+import asyncio
 import datetime
 from functools import partial
 import logging
@@ -30,22 +31,19 @@ from .const import (
     UPDATE_COORDINATOR_CLIENTS,
     UPDATE_COORDINATOR_CLIENTS_RX_SPEED,
     UPDATE_COORDINATOR_CLIENTS_TX_SPEED,
-    UPDATE_COORDINATOR_FW,
-    UPDATE_COORDINATOR_STAT,
-    UPDATE_COORDINATOR_WAN_RX_SPEED,
-    UPDATE_COORDINATOR_WAN_STATUS,
-    UPDATE_COORDINATOR_WAN_TX_SPEED,
+    UPDATE_COORDINATOR_IF_STATS,
+    UPDATE_COORDINATOR_INTERNET_STATUS,
+    UPDATE_COORDINATOR_SYS_FW,
+    UPDATE_COORDINATOR_SYS_STATS,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
 UPDATE_INTERVALS = {
-    UPDATE_COORDINATOR_FW: datetime.timedelta(minutes=60),
-    UPDATE_COORDINATOR_STAT: datetime.timedelta(seconds=30),
-    UPDATE_COORDINATOR_WAN_STATUS: datetime.timedelta(seconds=30),
-    UPDATE_COORDINATOR_WAN_RX_SPEED: datetime.timedelta(seconds=30),
-    UPDATE_COORDINATOR_WAN_TX_SPEED: datetime.timedelta(seconds=30),
+    UPDATE_COORDINATOR_SYS_FW: datetime.timedelta(minutes=60),
+    UPDATE_COORDINATOR_SYS_STATS: datetime.timedelta(seconds=30),
+    UPDATE_COORDINATOR_INTERNET_STATUS: datetime.timedelta(seconds=30),
     UPDATE_COORDINATOR_CLIENTS: datetime.timedelta(seconds=30),
     UPDATE_COORDINATOR_CLIENTS_RX_SPEED: datetime.timedelta(seconds=30),
     UPDATE_COORDINATOR_CLIENTS_TX_SPEED: datetime.timedelta(seconds=30)
@@ -71,8 +69,10 @@ class KeeneticRouter:
         self.config_entry = config_entry
         self.update_coordinators = {}
         self.tracked_network_client_ids = []
+        self.wan_interface_name = None
 
         self._authenticated = False
+        self._device_ids = {}
 
         self.api = KeeneticAPI(
             scheme=PROTOCOL_HTTP, #config_entry.data[CONF_PROTOCOL],
@@ -88,10 +88,13 @@ class KeeneticRouter:
 
         # General update coordinators
         update_methods = {
-            UPDATE_COORDINATOR_FW: partial(self._fetch_data, self.api.get_system_fw),
-            UPDATE_COORDINATOR_WAN_STATUS: partial(self._fetch_data, self.api.get_internet_status),
-            UPDATE_COORDINATOR_CLIENTS: partial(self._fetch_data, self.api.get_network_clients),
-            UPDATE_COORDINATOR_STAT: self._get_system_stat,
+            UPDATE_COORDINATOR_SYS_FW: partial(self._fetch_data,
+                                           self.api.get_system_fw),
+            UPDATE_COORDINATOR_INTERNET_STATUS: partial(self._fetch_data,
+                                                        self.api.get_internet_status),
+            UPDATE_COORDINATOR_CLIENTS: partial(self._fetch_data,
+                                                self.api.get_network_clients),
+            UPDATE_COORDINATOR_SYS_STATS: self._get_system_stats,
             UPDATE_COORDINATOR_CLIENTS_RX_SPEED: self._get_network_clients_rx,
             UPDATE_COORDINATOR_CLIENTS_TX_SPEED: self._get_network_clients_tx
         }
@@ -110,28 +113,22 @@ class KeeneticRouter:
             self.get_network_clients_data().keys()
         )
 
-        # WAN speed
-        wan_interface_name = \
-            self.update_coordinators[UPDATE_COORDINATOR_WAN_STATUS].\
+        # Get WAN interface name
+        self.wan_interface_name = \
+            self.update_coordinators[UPDATE_COORDINATOR_INTERNET_STATUS].\
                 data.get("gateway", {}).get("interface")
 
-        wan_speed_methods = {
-            UPDATE_COORDINATOR_WAN_RX_SPEED: partial(self._get_interface_rx,
-                                                     name=wan_interface_name),
-            UPDATE_COORDINATOR_WAN_TX_SPEED: partial(self._get_interface_tx,
-                                                     name=wan_interface_name),
-        }
-
-        for coordinator_type, method in wan_speed_methods.items():
-            self.update_coordinators[coordinator_type] = \
-                DataUpdateCoordinator(
-                    self.hass, _LOGGER,
-                    name=f"{coordinator_type}",
-                    update_method=method,
-                    update_interval=UPDATE_INTERVALS[coordinator_type]
-                )
-            await self.update_coordinators[coordinator_type].\
-                async_config_entry_first_refresh()
+        # Interfaces stats update coordinator
+        self.update_coordinators[UPDATE_COORDINATOR_IF_STATS] = \
+            DataUpdateCoordinator(
+                self.hass, _LOGGER,
+                name=UPDATE_COORDINATOR_IF_STATS,
+                update_method=partial(self._get_interface_stats,
+                                      names=[self.wan_interface_name]),
+                update_interval=datetime.timedelta(seconds=30)
+            )
+        await self.update_coordinators[UPDATE_COORDINATOR_IF_STATS].\
+            async_config_entry_first_refresh()
 
         # Add coordinators' listeners
         ## Network clients listener
@@ -196,9 +193,9 @@ class KeeneticRouter:
             ) from ex
 
 
-    async def _get_system_stat(self) -> dict:
+    async def _get_system_stats(self) -> dict:
         """Fetch Keenetic system statistics."""
-        data = await self._fetch_data(self.api.get_system_stat, try_auth=True)
+        data = await self._fetch_data(self.api.get_system_stats, try_auth=True)
 
         memory_use = data["memtotal"] - data["memfree"]
         data["memory_usage"] = round(
@@ -208,18 +205,13 @@ class KeeneticRouter:
         return data
 
 
-    async def _get_interface_rx(self, name: str) -> dict:
-        """Get Router interface RX speed."""
-        data = await self._fetch_data(partial(self.api.get_interface_speed,
-                                              name=name, direction="rxspeed"))
-        return {"rxspeed": data["data"][0]["v"]}
-
-
-    async def _get_interface_tx(self, name: str) -> dict:
-        """Get Router interface TX speed."""
-        data = await self._fetch_data(partial(self.api.get_interface_speed,
-                                              name=name, direction="txspeed"))
-        return {"txspeed": data["data"][0]["v"]}
+    async def _get_interface_stats(self, names: list) -> dict:
+        stats = {}
+        async with asyncio.TaskGroup() as tg:
+            for name in names:
+                stats[name] = tg.create_task(
+                    self._fetch_data(self.api.get_interface_stats, name=name))
+        return {name: r.result() for name, r in stats.items()}
 
 
     async def _get_network_clients_rx(self) -> dict:
@@ -274,11 +266,13 @@ class KeeneticRouter:
         # Update Network client device name
         for client_id in data:
             device = device_registry.async_get_device(
-                identifiers={self._make_client_device_identifier(client_id)})
-            if device and device.name != self._make_client_device_name(client_id):
+                connections={(dr.CONNECTION_NETWORK_MAC, client_id)})
+
+            actual_device_name = self._make_client_device_name(client_id)
+            if device and device.name != actual_device_name:
                 device_registry.async_update_device(
                     device_id=device.id,
-                    name=self._make_client_device_name(client_id)
+                    name=actual_device_name
                 )
 
 
@@ -307,7 +301,7 @@ class KeeneticRouter:
     @property
     def router_device_info(self) -> dr.DeviceInfo:
         """Return Keenetic router DeviceInfo."""
-        fw_data = self.update_coordinators[UPDATE_COORDINATOR_FW].data
+        fw_data = self.update_coordinators[UPDATE_COORDINATOR_SYS_FW].data
         return dr.DeviceInfo(
             identifiers={self._router_device_identifier},
             manufacturer=fw_data["manufacturer"],
@@ -317,10 +311,6 @@ class KeeneticRouter:
             serial_number=self.config_entry.data["serial"],
             name=f"{self.config_entry.data[CONF_NAME]} Router"
         )
-
-
-    def _make_client_device_identifier(self, client_id) -> tuple:
-        return (DOMAIN, self.unique_id, "network_client", client_id)
 
 
     def _make_client_device_name(self, client_id) -> str:
@@ -337,7 +327,7 @@ class KeeneticRouter:
     def make_client_device_info(self, client_id) -> dr.DeviceInfo:
         """Return Network client DeviceInfo."""
         return dr.DeviceInfo(
-            identifiers={self._make_client_device_identifier(client_id)},
+            connections={(dr.CONNECTION_NETWORK_MAC, client_id)},
             name=self._make_client_device_name(client_id),
             via_device=self._router_device_identifier
         )

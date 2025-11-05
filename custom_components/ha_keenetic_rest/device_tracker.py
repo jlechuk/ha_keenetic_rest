@@ -40,13 +40,16 @@ class NetworkClientScanner(BaseKeeneticNetworkClientEntity, ScannerEntity):
     def mac_address(self) -> str:  # noqa: D102
         return self._get_coordinator_data().get("mac")
 
+    @property
+    def entity_registry_enabled_default(self) -> bool:  # noqa: D102
+        return False
+
 
 @dataclass
 class NetworkClientScannerDescription(
     BaseKeeneticEntityDescription, ScannerEntityDescription):
     """Network client scanner description."""
     entity_class = NetworkClientScanner
-    entity_registry_enabled_default = False
 
 
 NETWORK_CLIENT_SCANNER: tuple[NetworkClientScannerDescription, ...] = (

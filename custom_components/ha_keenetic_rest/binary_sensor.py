@@ -16,7 +16,7 @@ from .const import (
     DOMAIN,
     SIGNAL_NEW_NETWORK_CLIENTS,
     UPDATE_COORDINATOR_CLIENTS,
-    UPDATE_COORDINATOR_WAN_STATUS,
+    UPDATE_COORDINATOR_INTERNET_STATUS,
     BaseKeeneticEntityDescription,
 )
 from .entity import (
@@ -59,12 +59,16 @@ class NetworkClientBinarySensorDescription(
 ROUTER_BINARY_SENSORS: tuple[RouterBinarySensor, ...] = (
     RouterBinarySensorDescription(
         key="internet",
-        translation_key="wan_status",
+        translation_key="router_internet_status",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        update_coordinator=UPDATE_COORDINATOR_WAN_STATUS,
+        update_coordinator=UPDATE_COORDINATOR_INTERNET_STATUS,
         extra_attributes={"Enabled": "enabled",
+                          "Gateway accessible": "gateway-accessible",
+                          "DNS accessible": "dns-accessible",
+                          "Captive accessible": "captive-accessible",
                           "Interface": {"gateway": "interface"},
-                          "IP address": {"gateway": "address"}}
+                          "IP address": {"gateway": "address"},
+                          "Captive host": {"captive": "host"}}
     ),
 )
 
