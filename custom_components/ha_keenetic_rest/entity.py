@@ -30,7 +30,9 @@ class BaseKeeneticEntity(CoordinatorEntity):
 
     @property
     def native_value(self) -> float | int | str | None:  # noqa: D102
-        return self._get_coordinator_data().get(self.entity_description.key)
+        if data := self._get_coordinator_data():
+            return data.get(self.entity_description.key)
+        return None
 
     @property
     def available(self) -> bool:  # noqa: D102
@@ -47,10 +49,10 @@ class BaseKeeneticEntity(CoordinatorEntity):
                     self._extract_attribute_value(attr_key, data)
         return attributes
 
-    def _get_coordinator_data(self) -> Any:
+    def _get_coordinator_data(self) -> dict:
         raise NotImplementedError
 
-    def _get_attributes_data(self) -> Any:
+    def _get_attributes_data(self) -> dict:
         return self._get_coordinator_data()
 
     @staticmethod
@@ -84,8 +86,10 @@ class BaseKeeneticRouterEntity(BaseKeeneticEntity):
         """Router device info."""
         return self.router.router_device_info
 
-    def _get_coordinator_data(self):
-        return self.coordinator.data
+    def _get_coordinator_data(self) -> dict:
+        if data := self.coordinator.data:
+            return data
+        return {}
 
 
 class BaseKeeneticNetworkClientEntity(BaseKeeneticEntity):
@@ -110,8 +114,10 @@ class BaseKeeneticNetworkClientEntity(BaseKeeneticEntity):
         """Network client device info."""
         return self.router.make_client_device_info(self.client_id)
 
-    def _get_coordinator_data(self):
-        return self.coordinator.data.get(self.client_id)
+    def _get_coordinator_data(self) -> dict:
+        if data := self.coordinator.data:
+            return data.get(self.client_id, {})
+        return {}
 
 
 @callback

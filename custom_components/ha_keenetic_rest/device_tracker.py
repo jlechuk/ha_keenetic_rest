@@ -49,14 +49,14 @@ class NetworkClientScanner(BaseKeeneticNetworkClientEntity, ScannerEntity):
 class NetworkClientScannerDescription(
     BaseKeeneticEntityDescription, ScannerEntityDescription):
     """Network client scanner description."""
-    entity_class = NetworkClientScanner
 
 
 NETWORK_CLIENT_SCANNER: tuple[NetworkClientScannerDescription, ...] = (
     NetworkClientScannerDescription(
         key="scanner",
         translation_key="scanner",
-        update_coordinator=UPDATE_COORDINATOR_CLIENTS
+        update_coordinator=UPDATE_COORDINATOR_CLIENTS,
+        entity_class=NetworkClientScanner
     ),
 )
 

@@ -32,37 +32,38 @@ from .entity import (
 from .router import KeeneticRouter
 
 
-class RouterSensor(BaseKeeneticRouterEntity, SensorEntity):
+class GeneralRouterSensor(BaseKeeneticRouterEntity, SensorEntity):
     """Router sensor."""
 
 
-class RouterWANSpeedSensor(RouterSensor):
+class RouterWANSpeedSensor(GeneralRouterSensor):
     """Router WAN speed sensor."""
     def _get_coordinator_data(self) -> Any:
         if self.router.wan_interface_name:
             return super()._get_coordinator_data().\
-                get(self.router.wan_interface_name)
+                get(self.router.wan_interface_name, {})
         return {}
 
 
 class NetworkClientSpeedSensor(BaseKeeneticNetworkClientEntity, SensorEntity):
     """Network client sensor."""
-    def _get_attributes_data(self):
-        return self.router.get_network_clients_data().get(self.client_id)
+    def _get_attributes_data(self) -> dict:
+        if data := self.router.get_network_clients_data():
+            return data.get(self.client_id, {})
+        return {}
 
 
 @dataclass
 class RouterSensorDescription(
     BaseKeeneticEntityDescription, SensorEntityDescription):
     """Router sensor description."""
-    entity_class = RouterSensor
+    entity_class = GeneralRouterSensor
 
 
 @dataclass
 class NetworkClientSensorDescription(
     BaseKeeneticEntityDescription, SensorEntityDescription):
     """Network client sensor description."""
-    entity_class = None
 
 
 ROUTER_SENSORS: tuple[RouterSensorDescription, ...] = (
@@ -127,9 +128,9 @@ NETWORK_CLIENT_SENSORS: tuple[NetworkClientSensorDescription, ...] = (
         suggested_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
         suggested_display_precision=0,
         update_coordinator=UPDATE_COORDINATOR_CLIENTS_RX_SPEED,
-        entity_class=NetworkClientSpeedSensor,
         extra_attributes = {"Interface ID": {"interface": "id"},
-                            "Interface name": {"interface": "name"}}
+                            "Interface name": {"interface": "name"}},
+        entity_class=NetworkClientSpeedSensor
     ),
     NetworkClientSensorDescription(
         key="txspeed",
@@ -140,9 +141,9 @@ NETWORK_CLIENT_SENSORS: tuple[NetworkClientSensorDescription, ...] = (
         suggested_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
         suggested_display_precision=0,
         update_coordinator=UPDATE_COORDINATOR_CLIENTS_TX_SPEED,
-        entity_class=NetworkClientSpeedSensor,
         extra_attributes = {"Interface ID": {"interface": "id"},
-                            "Interface name": {"interface": "name"}}
+                            "Interface name": {"interface": "name"}},
+        entity_class=NetworkClientSpeedSensor
     )
 )
 

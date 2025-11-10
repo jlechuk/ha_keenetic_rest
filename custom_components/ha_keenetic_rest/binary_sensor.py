@@ -27,36 +27,34 @@ from .entity import (
 from .router import KeeneticRouter
 
 
-class RouterBinarySensor(BaseKeeneticRouterEntity, BinarySensorEntity):
+class RouterGeneralBinarySensor(BaseKeeneticRouterEntity, BinarySensorEntity):
     """Router binary sensor."""
     @property
     def is_on(self) -> bool | None:  # noqa: D102
-        return self._get_coordinator_data()[self.entity_description.key]
+        return self._get_coordinator_data().get(self.entity_description.key)
 
 
-class NetworkClientBinarySensor(
+class NetworkClientGeneralBinarySensor(
     BaseKeeneticNetworkClientEntity, BinarySensorEntity):
     """Network client binary sensor."""
     @property
     def is_on(self) -> bool | None:  # noqa: D102
-        return self._get_coordinator_data()[self.entity_description.key]
+        return self._get_coordinator_data().get(self.entity_description.key)
 
 
 @dataclass
 class RouterBinarySensorDescription(
     BaseKeeneticEntityDescription, BinarySensorEntityDescription):
     """Router binary sensor description."""
-    entity_class = RouterBinarySensor
 
 
 @dataclass
 class NetworkClientBinarySensorDescription(
     BaseKeeneticEntityDescription, BinarySensorEntityDescription):
     """Network client binary sensor description."""
-    entity_class = NetworkClientBinarySensor
 
 
-ROUTER_BINARY_SENSORS: tuple[RouterBinarySensor, ...] = (
+ROUTER_BINARY_SENSORS: tuple[RouterBinarySensorDescription, ...] = (
     RouterBinarySensorDescription(
         key="internet",
         translation_key="router_internet_status",
@@ -68,7 +66,8 @@ ROUTER_BINARY_SENSORS: tuple[RouterBinarySensor, ...] = (
                           "Captive accessible": "captive-accessible",
                           "Interface": {"gateway": "interface"},
                           "IP address": {"gateway": "address"},
-                          "Captive host": {"captive": "host"}}
+                          "Captive host": {"captive": "host"}},
+        entity_class=RouterGeneralBinarySensor
     ),
 )
 
@@ -85,7 +84,8 @@ NETWORK_CLIENT_BINARY_SENSORS: tuple[NetworkClientBinarySensorDescription, ...] 
                             "Interface description": {"interface": "description"},
                             "Speed": "speed",
                             "Port": "port", "SSID": "ssid",
-                            "Security": "security", "RSSI": "rssi"}
+                            "Security": "security", "RSSI": "rssi"},
+        entity_class=NetworkClientGeneralBinarySensor
     ),
 )
 

@@ -31,16 +31,17 @@ class NetworkClientRegisteredSwitch(
         return self._get_coordinator_data().get(self.entity_description.key)
 
     async def async_turn_on(self, **kwargs):  # noqa: D102
-        mac = self._get_coordinator_data()["mac"]
-        name = self.device_info["name"]
-        await self.router.change_client_registered_setting(
-            register=True, mac=mac, name=name)
+        mac = self._get_coordinator_data().get("mac")
+        name = self.device_info.get("name")
+        if mac and name:
+            await self.router.change_client_registered_setting(
+                register=True, mac=mac, name=name)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):  # noqa: D102
-        mac = self._get_coordinator_data()["mac"]
-        await self.router.change_client_registered_setting(
-            register=False, mac=mac)
+        if mac := self._get_coordinator_data().get("mac"):
+            await self.router.change_client_registered_setting(
+                register=False, mac=mac)
         await self.coordinator.async_request_refresh()
 
 
@@ -50,25 +51,21 @@ class NetworkClientInternetAccessSwitch(
 
     @property
     def is_on(self) -> bool | None:  # noqa: D102
-        data = self._get_coordinator_data()
-        if data:
-            state = data[self.entity_description.key]
-            if state == "permit":
-                return True
-            else:  # noqa: RET505
-                return False
+        state = self._get_coordinator_data().get(self.entity_description.key)
+        if state:
+            return state == "permit"
         return None
 
     async def async_turn_on(self, **kwargs):  # noqa: D102
-        mac = self._get_coordinator_data()["mac"]
-        await self.router.change_client_internet_access_setting(
-            permit=True, mac=mac)
+        if mac := self._get_coordinator_data().get("mac"):
+            await self.router.change_client_internet_access_setting(
+                permit=True, mac=mac)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):  # noqa: D102
-        mac = self._get_coordinator_data()["mac"]
-        await self.router.change_client_internet_access_setting(
-            permit=False, mac=mac)
+        if mac := self._get_coordinator_data().get("mac"):
+            await self.router.change_client_internet_access_setting(
+                permit=False, mac=mac)
         await self.coordinator.async_request_refresh()
 
     @property
